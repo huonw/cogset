@@ -7,6 +7,8 @@
 //! crate, or go all out and implement a specialised R*-tree for
 //! optimised performance.
 //!
+//! [Source](https://github.com/huonw/cogset).
+//!
 //! # Installation
 //!
 //! Add the following to your `Cargo.toml` file:
