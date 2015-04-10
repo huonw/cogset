@@ -1,0 +1,18 @@
+language: rust
+sudo: false
+script:
+  - cargo build --verbose && cargo test --verbose && cargo doc --verbose
+after_success:
+  - |
+        [ $TRAVIS_BRANCH = master ] &&
+        [ $TRAVIS_PULL_REQUEST = false ] &&
+        echo '<meta http-equiv=refresh content=0;url=cogset/index.html>' > target/doc/index.html &&
+        git clone https://github.com/davisp/ghp-import &&
+        ./ghp-import/ghp-import -n target/doc &&
+        git push -fq https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
+
+env:
+  global:
+    secure: "Zm2UP9tuReAMXYI7wHHZpff7ws4Hl35PkZdCbInU7+i432ydtPY1dXNpYA794aFYGyhkiCMCLzVpRZ33uOL6D7qQmK1KBn7AIDoPeifXVKVg/6L6Sqfhe/9cM3bZT0yIHQyFbcn4Gv2o+Jrfq3QRDA7aMwXKJNghY5OooRZtIy8="
+notifications:
+    webhooks: http://huon.me:54856/travis
