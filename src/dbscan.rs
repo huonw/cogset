@@ -99,13 +99,13 @@ use {Point, RegionQuery, ListPoints};
 ///     let actual_points = cluster.iter().map(|idx| points[*idx]);
 ///
 ///     write_points(&mut clustered, b'0' + i as u8,
-///     actual_points)
+///                  actual_points)
 /// }
 /// // now run over the noise points, i.e. points that aren't close
 /// // enough to others to be in a cluster.
 /// let noise = dbscan.noise_points();
 /// write_points(&mut clustered, b'.',
-/// noise.iter().map(|idx| points[*idx]));
+///              noise.iter().map(|idx| points[*idx]));
 ///
 /// // print the numbered clusters
 /// println!("{}", str::from_utf8(&clustered).unwrap());
