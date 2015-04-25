@@ -32,8 +32,8 @@ pub trait Points {
 }
 /// Collections of points that can be queried to find nearby points.
 pub trait RegionQuery: Points {
-    /// An iterator over the nearby points of a given one.
-    type Neighbours: Iterator<Item = Self::Point>;
+    /// An iterator over the nearby points and their distances of a given one.
+    type Neighbours: Iterator<Item = (f64, Self::Point)>;
 
     /// Return an iterator over points in `self` with distance from
     /// `point` less than or equal to `epsilon`.
@@ -109,15 +109,20 @@ pub struct BruteScanNeighbours<'a, P: Point + 'a> {
 }
 
 impl<'a,P: Point> Iterator for BruteScanNeighbours<'a, P> {
-    type Item = usize;
+    type Item = (f64, usize);
 
-    fn next(&mut self) -> Option<usize> {
+    fn next(&mut self) -> Option<(f64,usize)> {
         let BruteScanNeighbours { ref mut points, ref point, eps } = *self;
 
-        points.find(|&(_, p)| {
-            point.dist_lower_bound(p) <= eps
-                && point.dist(p) <= eps
-        }).map(|(i, _)| i)
+        points.filter_map(|(i, p)| {
+            if point.dist_lower_bound(p) <= eps {
+                let d = point.dist(p);
+                if d <= eps {
+                    return Some((d, i))
+                }
+            };
+            None
+        }).next()
     }
 }
 
@@ -165,16 +170,17 @@ mod tests {
         let points = [Euclid([0.0]), Euclid([10.0]), Euclid([5.0]), Euclid([2.5])];
         let points = BruteScan::new(&points);
 
-        assert_eq!(points.neighbours(&0, 1.0).collect::<Vec<_>>(),
-                   [0]);
-        assert_eq!(points.neighbours(&0, 3.0).collect::<Vec<_>>(),
-                   [0, 3]);
-        assert_eq!(points.neighbours(&1, 3.0).collect::<Vec<_>>(),
-                   [1]);
-        assert_eq!(points.neighbours(&1, 10.0).collect::<Vec<_>>(),
-                   [0, 1, 2, 3]);
-        assert_eq!(points.neighbours(&3, 3.0).collect::<Vec<_>>(),
-                   [0, 2, 3]);
+        type V = Vec<(f64, usize)>;
 
+        assert_eq!(points.neighbours(&0, 1.0).collect::<V>(),
+                   [(0.0, 0)]);
+        assert_eq!(points.neighbours(&0, 3.0).collect::<V>(),
+                   [(0.0, 0), (2.5, 3)]);
+        assert_eq!(points.neighbours(&1, 3.0).collect::<V>(),
+                   [(0.0, 1)]);
+        assert_eq!(points.neighbours(&1, 10.0).collect::<V>(),
+                   [(10.0, 0), (0.0, 1), (5.0, 2), (7.5, 3)]);
+        assert_eq!(points.neighbours(&3, 3.0).collect::<V>(),
+                   [(2.5, 0), (2.5, 2), (0.0, 3)]);
     }
 }

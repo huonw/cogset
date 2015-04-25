@@ -181,7 +181,7 @@ impl<P: RegionQuery + ListPoints> Iterator for Dbscan<P> where P::Point: Hash + 
 
         for idx in 0.. {
             if idx >= nbrs.len() { break }
-            let p2 = nbrs[idx].clone();
+            let (_, p2) = nbrs[idx].clone();
             if self.visited.insert(p2.clone()) {
                 let old_len = nbrs.len();
                 nbrs.extend(self.points.neighbours(&p2, self.eps));
