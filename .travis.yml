@@ -1,15 +1,21 @@
 language: rust
-sudo: false
+rust:
+  - nightly
+  - beta
+
+before_script:
+  - git clone --depth 1 https://github.com/huonw/travis-cargo
+  - ln -s ./travis-cargo/travis-cargo.py tc
+
 script:
-  - cargo build --verbose && cargo test --verbose && cargo doc --verbose
-after_success:
   - |
-        [ $TRAVIS_BRANCH = master ] &&
-        [ $TRAVIS_PULL_REQUEST = false ] &&
-        echo '<meta http-equiv=refresh content=0;url=cogset/index.html>' > target/doc/index.html &&
-        git clone https://github.com/davisp/ghp-import &&
-        ./ghp-import/ghp-import -n target/doc &&
-        git push -fq https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
+      tc cargo build &&
+      tc cargo test &&
+      tc cargo bench &&
+      tc cargo doc
+
+after_success:
+  - tc --only beta doc-upload
 
 env:
   global:

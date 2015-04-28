@@ -12,3 +12,6 @@ documentation = "http://huonw.github.io/cogset/cogset/"
 description = """
 Generic implementations of clustering algorithms. Includes DBSCAN.
 """
+
+[features]
+unstable = []
