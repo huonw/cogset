@@ -134,6 +134,9 @@ impl<P: RegionQuery + ListPoints> Dbscan<P> where P::Point: Hash + Eq + Clone {
     /// `eps` is the maximum distance between points when creating
     /// neighbours to construct clusters. `min_points` is the minimum
     /// of points for a cluster.
+    ///
+    /// This does not perform any significant computation immediately;
+    /// clusters are found on the fly via the `Iterator` instance.
     pub fn new(points: P, eps: f64, min_points: usize) -> Dbscan<P> {
         Dbscan {
             all_points: points.all_points(),

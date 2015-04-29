@@ -9,7 +9,10 @@
 //! crate, or go all out and implement a specialised R*-tree for
 //! optimised performance.
 //!
-//! `Dbscan` offers density-based clustering via the DBSCAN algorithm.
+//! Density-based clustering algorithms:
+//!
+//! - DBSCAN (`Dbscan`)
+//! - OPTICS (`Optics`)
 //!
 //! [Source](https://github.com/huonw/cogset).
 //!
@@ -26,6 +29,8 @@
 #[cfg(all(test, feature = "unstable"))] extern crate test;
 #[cfg(test)] extern crate rand;
 
+extern crate order_stat;
+
 #[cfg(all(test, feature = "unstable"))]
 #[macro_use]
 mod benches;
@@ -36,6 +41,9 @@ macro_rules! make_benches {
 
 mod dbscan;
 pub use dbscan::Dbscan;
+
+mod optics;
+pub use optics::{Optics, OpticsDbscanClustering};
 
 mod point;
 pub use point::{Point, RegionQuery, Points, ListPoints, BruteScan, BruteScanNeighbours, Euclid};
