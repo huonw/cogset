@@ -233,3 +233,5 @@ mod tests {
                    &[7]);
     }
 }
+
+make_benches!(|p, e, mp| super::Dbscan::new(p, e, mp).count());

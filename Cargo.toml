@@ -15,3 +15,6 @@ Generic implementations of clustering algorithms. Includes DBSCAN.
 
 [features]
 unstable = []
+
+[dev-dependencies]
+rand = "0.3"

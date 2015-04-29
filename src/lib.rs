@@ -22,6 +22,18 @@
 //! cogset = "0.1"
 //! ```
 
+#![cfg_attr(all(test, feature = "unstable"), feature(test))]
+#[cfg(all(test, feature = "unstable"))] extern crate test;
+#[cfg(test)] extern crate rand;
+
+#[cfg(all(test, feature = "unstable"))]
+#[macro_use]
+mod benches;
+#[cfg(not(all(test, feature = "unstable")))]
+macro_rules! make_benches {
+    ($($_x: tt)*) => {}
+}
+
 mod dbscan;
 pub use dbscan::Dbscan;
 
