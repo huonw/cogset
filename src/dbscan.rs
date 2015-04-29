@@ -5,7 +5,7 @@ use {Point, RegionQuery, ListPoints};
 
 /// Clustering via the DBSCAN algorithm[1].
 ///
-/// DBSCAN is a density-based clustering algorithm: given a set of
+/// > [DBSCAN] is a density-based clustering algorithm: given a set of
 /// points in some space, it groups together points that are closely
 /// packed together (points with many nearby neighbors), marking as
 /// outliers points that lie alone in low-density regions (whose
