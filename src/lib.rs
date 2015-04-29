@@ -26,7 +26,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! cogset = "0.1"
+//! cogset = "0.2"
 //! ```
 
 #![cfg_attr(all(test, feature = "unstable"), feature(test))]
