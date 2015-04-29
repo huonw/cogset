@@ -14,6 +14,10 @@
 //! - DBSCAN (`Dbscan`)
 //! - OPTICS (`Optics`)
 //!
+//! Others:
+//!
+//! - *k*-means (`Kmeans`)
+//!
 //! [Source](https://github.com/huonw/cogset).
 //!
 //! # Installation
@@ -47,3 +51,7 @@ pub use optics::{Optics, OpticsDbscanClustering};
 
 mod point;
 pub use point::{Point, RegionQuery, Points, ListPoints, BruteScan, BruteScanNeighbours, Euclid};
+
+mod kmeans;
+
+pub use kmeans::{Kmeans, KmeansBuilder};

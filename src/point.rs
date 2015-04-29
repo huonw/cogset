@@ -127,25 +127,49 @@ impl<'a,P: Point> Iterator for BruteScanNeighbours<'a, P> {
 }
 
 /// Points in ℝ<sup><i>n</i></sup> with the <i>L</i><sup>2</sup> norm.
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct Euclid<T>(pub T);
+
+pub trait Euclidean {
+    fn zero() -> Self;
+    fn add(&mut self, &Self);
+    fn scale(&mut self, f64);
+    fn dist2(&self, other: &Self) -> f64;
+}
 
 macro_rules! euclidean_points {
     ($($e: expr),*) => {
         $(
             impl Point for Euclid<[f64; $e]> {
                 fn dist(&self, other: &Euclid<[f64; $e]>) -> f64 {
+                    self.dist2(other).sqrt()
+                }
+
+                fn dist_lower_bound(&self, other: &Euclid<[f64; $e]>) -> f64 {
+                    (self.0[0] - other.0[0]).abs()
+                }
+            }
+            impl Euclidean for Euclid<[f64; $e]> {
+                fn zero() -> Self {
+                    Euclid([0.0; $e])
+                }
+                fn add(&mut self, other: &Self) {
+                    for (place, val) in self.0.iter_mut().zip(other.0.iter()) {
+                        *place += *val
+                    }
+                }
+                fn scale(&mut self, factor: f64) {
+                    for place in &mut self.0 {
+                        *place *= factor
+                    }
+                }
+                fn dist2(&self, other: &Euclid<[f64; $e]>) -> f64 {
                     self.0.iter().zip(other.0.iter())
                         .map(|(a, b)| {
                             let d = *a - *b;
                             d * d
                         })
                         .fold(0.0, |a, b| a + b)
-                        .sqrt()
-                }
-
-                fn dist_lower_bound(&self, other: &Euclid<[f64; $e]>) -> f64 {
-                    (self.0[0] - other.0[0]).abs()
                 }
             }
             )*
