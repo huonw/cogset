@@ -216,6 +216,7 @@ fn update_centres<T>(data: &[Euclid<T>],
 mod tests {
     use super::*;
     use Euclid;
+    use rand::{XorShiftRng,Rng};
 
     #[test]
     fn smoke() {
@@ -238,5 +239,17 @@ mod tests {
                     (Euclid([0.15, 0.9]), vec![3, 4])]);
 
         assert_eq!(res.converged(), Ok(2));
+    }
+    #[test]
+    fn no_converge() {
+        let mut rng = XorShiftRng::new_unseeded();
+        let points = (0..100)
+            .map(|_| Euclid([rng.gen()]))
+            .collect::<Vec<Euclid<[f64; 1]>>>();
+
+        let res = KmeansBuilder::new().tolerance(1e-18).max_iter(2).kmeans(&points, 4);
+
+
+        assert_eq!(res.converged(), Err(2))
     }
 }
