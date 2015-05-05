@@ -184,14 +184,16 @@ fn update_assignments<T>(data: &[Euclid<T>],
         let mut min_dist = INF;
         let mut index = 0;
         for (i, c) in centres.iter().enumerate() {
-            let dist = point.dist(c);
+            // we can use the square of the distance here
+            let dist = point.dist2(c);
             if dist < min_dist {
                 min_dist = dist;
                 index = i;
             }
         }
 
-        *cost = min_dist;
+        // but we need to make sure we're storing the right cost.
+        *cost = min_dist.sqrt();
         *assign = index;
         counts[index] += 1;
     }
