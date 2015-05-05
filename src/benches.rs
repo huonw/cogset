@@ -56,7 +56,6 @@ impl<'a> ListPoints for SortedScan<'a> {
 
 pub fn run<T, F: FnMut(SortedScan, f64, usize) -> T>(b: &mut Bencher, n: usize, mut f: F) {
     let mut rng = XorShiftRng::new_unseeded();
-    for _ in 0..100 { rng.gen::<u32>(); }
     let mut points = rng
         .gen_iter::<f64>()
         .take(n)
