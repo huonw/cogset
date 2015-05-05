@@ -184,7 +184,7 @@ fn update_assignments<T>(data: &[Euclid<T>],
         let mut min_dist = INF;
         let mut index = 0;
         for (i, c) in centres.iter().enumerate() {
-            let dist = point.dist2(c);
+            let dist = point.dist(c);
             if dist < min_dist {
                 min_dist = dist;
                 index = i;
