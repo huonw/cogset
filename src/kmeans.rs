@@ -253,3 +253,46 @@ mod tests {
         assert_eq!(res.converged(), Err(2))
     }
 }
+
+#[cfg(all(test, feature = "unstable"))]
+mod benches {
+    use super::Kmeans;
+    use Euclid;
+    use rand::{XorShiftRng,Rng};
+    use test::Bencher;
+    macro_rules! benches {
+        ($($name: ident, $k: expr, $n: expr;)*) => {
+            $(
+                #[bench]
+                fn $name(b: &mut Bencher) {
+                    let k = $k;
+                    let n = $n;
+
+                    let mut rng = XorShiftRng::new_unseeded();
+                    let points = rng
+                        .gen_iter::<f64>()
+                        .take(n)
+                        .map(|f| Euclid([f]))
+                        .collect::<Vec<_>>();
+
+                    b.iter(|| Kmeans::new(&points, k))
+                }
+                )*
+        }
+    }
+
+    benches! {
+        k003_n00010,   3,    10;
+        k003_n00100,   3,   100;
+        k003_n01000,   3,  1000;
+        k003_n10000,   3, 10000;
+
+        k010_n00100,  10,   100;
+        k010_n01000,  10,  1000;
+        k010_n10000,  10, 10000;
+
+        k100_n01000, 100,  1000;
+        // too slow:
+        // k100_n10000, 100, 10000;
+    }
+}
