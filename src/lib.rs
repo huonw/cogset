@@ -53,5 +53,7 @@ mod point;
 pub use point::{Point, RegionQuery, Points, ListPoints, BruteScan, BruteScanNeighbours, Euclid};
 
 mod kmeans;
-
 pub use kmeans::{Kmeans, KmeansBuilder};
+
+mod hierarchical;
+pub use hierarchical::{Agglomerative, Linkage};
