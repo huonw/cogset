@@ -5,7 +5,8 @@ use {Point};
 
 /// Hierarchical linkage criteria.
 pub enum Linkage {
-    Complete
+    Complete,
+    Single
 }
 
 
@@ -39,12 +40,13 @@ impl<'a, P: Point> Agglomerative<'a, P> {
     {
         let mut clusters: Vec<_> = data.into_iter().map(|p| vec![p]).collect();
 
-        let linkage: fn(&Vec<Vec<&P>>) -> (f64, usize, usize) = match linkage {
-            Linkage::Complete => complete_linkage
+        let linkage: fn(&Vec<&P>, &Vec<&P>) -> f64 = match linkage {
+            Linkage::Complete => complete_linkage,
+            Linkage::Single => single_linkage
         };
 
         while clusters.len() > 1 {
-            let (d, i, j) = linkage(&clusters);
+            let (d, i, j) = merge(&clusters, linkage);
 
             if d > threshold {
                 break;
@@ -64,30 +66,56 @@ impl<'a, P: Point> Agglomerative<'a, P> {
     }
 }
 
-fn complete_linkage<P: Point>(clusters: &Vec<Vec<&P>>) -> (f64, usize, usize) {
+fn merge<P, F>(clusters: &Vec<Vec<&P>>, linkage: F) -> (f64, usize, usize)
+    where P: Point, F: Fn(&Vec<&P>, &Vec<&P>) -> f64
+{
     let mut merge_distance = f64::INFINITY;
     let mut merge_pair = (0, 0);
 
     for i in 0..clusters.len() {
         for j in i+1..clusters.len() {
-            let mut maximal_distance = 0.0;
+            let distance = linkage(&clusters[i], &clusters[j]);
 
-            for a in &clusters[i] {
-                for b in &clusters[j] {
-                    let distance = a.dist(b);
-
-                    if distance > maximal_distance {
-                        maximal_distance = distance;
-                    }
-                }
-            }
-
-            if maximal_distance < merge_distance {
-                merge_distance = maximal_distance;
+            if distance < merge_distance {
+                merge_distance = distance;
                 merge_pair = (i, j);
             }
         }
     }
 
     (merge_distance, merge_pair.0, merge_pair.1)
+}
+
+#[allow(non_snake_case)]
+fn complete_linkage<P: Point>(A: &Vec<&P>, B: &Vec<&P>) -> f64 {
+    let mut maximal_distance = f64::NEG_INFINITY;
+
+    for a in A {
+        for b in B {
+            let distance = a.dist(b);
+
+            if distance > maximal_distance {
+                maximal_distance = distance;
+            }
+        }
+    }
+
+    maximal_distance
+}
+
+#[allow(non_snake_case)]
+fn single_linkage<P: Point>(A: &Vec<&P>, B: &Vec<&P>) -> f64 {
+    let mut minimal_distance = f64::INFINITY;
+
+    for a in A {
+        for b in B {
+            let distance = a.dist(b);
+
+            if distance < minimal_distance {
+                minimal_distance = distance;
+            }
+        }
+    }
+
+    minimal_distance
 }
