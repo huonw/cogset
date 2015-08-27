@@ -14,6 +14,10 @@
 //! - DBSCAN (`Dbscan`)
 //! - OPTICS (`Optics`)
 //!
+//! Hierarchical clustering algorithms:
+//!
+//! - Agglomerative bottm-up (`Agglomerative`)
+//!
 //! Others:
 //!
 //! - *k*-means (`Kmeans`)
