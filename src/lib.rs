@@ -56,4 +56,4 @@ mod kmeans;
 pub use kmeans::{Kmeans, KmeansBuilder};
 
 mod hierarchical;
-pub use hierarchical::{Agglomerative, Linkage};
+pub use hierarchical::{Agglomerative, LinkageCriterion, Dendrogram, Elements};
