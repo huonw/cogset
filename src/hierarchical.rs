@@ -1,12 +1,19 @@
+use std::borrow::Borrow;
 use std::cmp::{min, max};
 use std::f64::{INFINITY, NEG_INFINITY};
+use std::mem::replace;
 
 use {Point};
 
-// TODO: Add tests
 // TODO: More efficient `Elements` Iterator
-// TODO: Implement `SLINK` as single-linkage criterion
 // TODO: Implement `CLINK` as alternative complete-linkage criterion
+
+
+/// A lookup function for point distances, i.e., `d(i,j)`.
+pub type DistanceFunction = Fn(usize, usize) -> f64;
+
+/// A function to compute the inter-cluster distance between set `A` and `B`.
+pub type LinkageFunction = Fn(&DistanceFunction, &Dendrogram<usize>, &Dendrogram<usize>) -> f64;
 
 
 /// Hierarchical linkage criteria.
@@ -14,8 +21,8 @@ use {Point};
 /// The linkage decides how the distance between clusters is computed.
 ///
 /// <script src="https://is.gd/BFouBe"></script>
-#[derive(Copy, Clone, Debug)]
-pub enum LinkageCriterion {
+#[derive(Copy, Clone)]
+pub enum LinkageCriterion<'a> {
     /// Maximum or complete-linkage clustering.
     ///
     /// <p>
@@ -28,7 +35,13 @@ pub enum LinkageCriterion {
     /// <p>
     /// $$\min_{a \in A,\, b \in B} \, d(a, b)$$
     /// </p>
-    Single
+    Single,
+
+    /// Custom likage criterion.
+    ///
+    /// By providing a custom `LinkageFunction` it's possible to define
+    /// a custom linkage criterion.
+    Custom(&'a LinkageFunction)
 }
 
 
@@ -39,12 +52,15 @@ pub enum LinkageCriterion {
 /// clusters is mainly defined by the linkage criterion and the `Point`'s distance
 /// metric.
 ///
-/// The inter-point distances are pre-computed and cached in a distance matrix.
-///
 /// * **Complete-linkage**: Currently a naive implementation with O( n^3 ) time
 ///   and O( n^2 ) space complexity.
-/// * **Single-linkage**: Currently a naive implementation with O( n^3 ) time
-///   and O( n^2 ) space complexity.
+/// * **Single-linkage**: Implementation of the optimal SLINK [1] algorithm with O( n^2 ) time
+///   and O( n ) space complexity.
+/// * **Custom**: _At least_ O( n^3 ) time and O( n^2 ) space complexity. The exact
+///   complexity depends on the linkage criterion.
+///
+/// [1]: Sibson, R. (1973). SLINK: an optimally efficient algorithm for the single-link
+///      cluster method. The Computer Journal, 16(1), 30-34.
 ///
 /// # Examples
 ///
@@ -57,143 +73,215 @@ pub enum LinkageCriterion {
 ///             Euclid([0.3, 0.8]),
 ///             Euclid([0.0, 1.0])];
 ///
-/// let agglomerative = Agglomerative::new(&data);
+/// let agglomerative = Agglomerative::new(&data, LinkageCriterion::Single);
 ///
-/// println!("{:?}", agglomerative.clusters(LinkageCriterion::Complete, 0.4));
-/// println!("{:?}", agglomerative.clusters(LinkageCriterion::Complete, 0.6));
-///
-/// println!("{:?}", agglomerative.dendrogram(LinkageCriterion::Complete));
+/// println!("Dendogram: {:#?}", agglomerative.dendrogram());
 /// ```
-///
-/// <script src="https://is.gd/BFouBe"></script>
 #[derive(Clone, Debug)]
 pub struct Agglomerative<'a, P: 'a + Point> {
-    points: Vec<&'a P>,
-    distances: Vec<Vec<f64>>
+    dendrogram: Box<Dendrogram<&'a P>>
 }
 
 impl<'a, P: 'a + Point> Agglomerative<'a, P> {
-    /// Pre-compute the inter-point distances of `data`.
-    pub fn new<T>(data: T) -> Agglomerative<'a, P>
+    /// Computes the `Dendrogram` for the supplied `data` using `linkage` as criterion.
+    pub fn new<T>(data: T, linkage: LinkageCriterion) -> Agglomerative<'a, P>
         where T: IntoIterator<Item=&'a P>
     {
         let points:Vec<_> = data.into_iter().collect();
-        let n = points.len();
 
-        // pre-compute distances, using as few space as possible,
-        // we assume that d(i,j) = d(j,i) and d(i,i) = 0
-        let distances = (0..n).map(|i| {
-            (i+1..n).map(|j| {
-                points[i].dist(points[j])
-            }).collect()
-        }).collect();
+        let dendrogram = match linkage {
+            LinkageCriterion::Single => slink(&points),
+            LinkageCriterion::Complete => naive(&points, &maximal_distance),
+            LinkageCriterion::Custom(f) => naive(&points, f)
+        };
 
         Agglomerative {
-            points: points,
-            distances: distances
+            dendrogram: dendrogram
         }
     }
 
-    /// Perform the actual clustering.
-    ///
-    /// Starting with each point in its own cluster successively merge two clusters
-    /// ,determined by `linkage`, until either only one is left or the maximal distance
-    /// `threshold` has been exceeded.
-    pub fn clusters(&'a self, linkage: LinkageCriterion, threshold: f64) -> Vec<Vec<&'a P>> {
-        self.merge(linkage, threshold).iter().map(|cluster| {
-            cluster.into_iter().map(|i| self.points[*i]).collect()
-        }).collect()
+    /// Retrieve the clusters from the dendrogram by cutting all branches with a distance
+    /// greater than `threshold`.
+    pub fn clusters(&'a self, threshold: f64) -> Vec<Vec<&'a P>> {
+        let mut clusters = vec![&self.dendrogram];
+
+        let mut i = 0;
+        while i < clusters.len() {
+            if let &Dendrogram::Branch(d, ref a, ref b) = clusters[i].borrow() {
+                if d > threshold {
+                    clusters.swap_remove(i);
+                    clusters.push(a);
+                    clusters.push(b);
+
+                    continue;
+                }
+            }
+
+            i += 1;
+        }
+
+        clusters.iter().map(|c| c.into_iter().map(|p| *p).collect()).collect()
     }
 
-    /// Calculate the hierarchical dendrogram for the givan linkage criterion.
-    pub fn dendrogram(&'a self, linkage: LinkageCriterion) -> Box<Dendrogram<&'a P>> {
-        let mut x = self.merge(linkage, INFINITY);
-        assert!(x.len() == 1);
-        let x = x.pop().unwrap();
+    /// Return the calculate `Dendrogram`.
+    pub fn dendrogram(&'a self) -> &'a Box<Dendrogram<&'a P>> {
+        &self.dendrogram
+    }
+}
 
-        self.convert(&x)
+
+fn naive<'a, P: Point>(points: &Vec<&'a P>, linkage: &LinkageFunction)
+    -> Box<Dendrogram<&'a P>>
+{
+    let n = points.len();
+
+    // pre-compute distances, using as few space as possible,
+    // we assume that d(i,j) = d(j,i) and d(i,i) = 0
+    let distances: Vec<Vec<f64>> = (0..n).map(|i| {
+        (i+1..n).map(|j| points[i].dist(points[j])).collect()
+    }).collect();
+
+    // TODO: Why is the move required? How could this closure outlive the currenct function?
+    let d = move |i: usize, j: usize| {
+        if i == j {
+            0.0
+        } else {
+            let (i, j) = if i < j { (i, j) } else { (j, i) };
+            distances[i][j - i - 1]
+        }
+    };
+
+    let mut clusters: Vec<_> = (0..n).map(|i| Box::new(Dendrogram::Leaf(i))).collect();
+
+    // there must be two clusters to merge them
+    while clusters.len() > 1 {
+        let mut min_dist = INFINITY;
+        let mut merge = (0, 0);
+
+        // find the next two clusters to merge
+        for i in (0..clusters.len()) {
+            for j in (i+1..clusters.len()) {
+                let distance = linkage(&d, &clusters[i], &clusters[j]);
+
+                if distance < min_dist {
+                    min_dist = distance;
+                    merge = (i, j);
+                }
+            }
+        }
+
+        // remove first the one with the higher index
+        let a = clusters.swap_remove(max(merge.0, merge.1));
+        let b = clusters.swap_remove(min(merge.0, merge.1));
+
+        clusters.push(Box::new(Dendrogram::Branch(min_dist, b, a)));
     }
 
-    fn convert(&'a self, root: &Dendrogram<usize>) -> Box<Dendrogram<&'a P>> {
+    fn convert<'a, P: Point>(points: &Vec<&'a P>, root: &Dendrogram<usize>) -> Box<Dendrogram<&'a P>> {
         Box::new(match root {
             &Dendrogram::Branch(d, ref a, ref b) =>
-                Dendrogram::Branch(d, self.convert(a), self.convert(b)),
-            &Dendrogram::Leaf(i) => Dendrogram::Leaf(self.points[i])
+                Dendrogram::Branch(d, convert(points, a), convert(points, b)),
+            &Dendrogram::Leaf(i) => Dendrogram::Leaf(points[i])
         })
     }
 
-    fn merge(&'a self, linkage: LinkageCriterion, threshold: f64) -> Vec<Box<Dendrogram<usize>>> {
-        let mut clusters: Vec<_> = (0..self.points.len()).map(|i|
-            Box::new(Dendrogram::Leaf(i))).collect();
+    convert(points, &clusters.pop().unwrap())
+}
 
-        // first abort criterion, there must be two clusters to merge them
-        while clusters.len() > 1 {
-            let (d, i, j) = (0..clusters.len())
-                .flat_map(|i| (i+1..clusters.len()).map(move |j| (i, j)))
-                .map(|(i, j)| (self.link(linkage, &clusters[i], &clusters[j]), i, j))
-                .fold((INFINITY, 0, 0), |a, b| if a.0 < b.0 { a } else { b });
 
-            // second abort criterium, max cluster distance
-            if d > threshold {
-                break;
-            }
+fn slink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
+    // clustering while creating the proper pointer representation
+    let mut pi = vec![0; points.len()];
+    let mut lambda = vec![0.0; points.len()];
+    let mut em = vec![0.0; points.len()];
 
-            let a = clusters.swap_remove(max(i, j));
-            let b = clusters.swap_remove(min(i, j));
+    for n in (0..points.len()) {
+        pi[n] = n;
+        lambda[n] = INFINITY;
 
-            clusters.push(Box::new(Dendrogram::Branch(d, a, b)));
+        for i in (0..n) {
+            em[i] = points[i].dist(points[n]);
         }
 
-        clusters
-    }
-
-    #[allow(non_snake_case)]
-    fn link(&self, linkage: LinkageCriterion, A: &Dendrogram<usize>, B: &Dendrogram<usize>) -> f64 {
-        match linkage {
-           LinkageCriterion::Complete => self.complete_linkage(A, B),
-           LinkageCriterion::Single => self.single_linkage(A, B)
-       }
-    }
-
-    #[allow(non_snake_case)]
-    fn complete_linkage(&self, A: &Dendrogram<usize>, B: &Dendrogram<usize>) -> f64 {
-        let mut maximal_distance = NEG_INFINITY;
-
-        for &a in A {
-            for &b in B {
-                let distance = self.distance(a, b);
-
-                if distance > maximal_distance {
-                    maximal_distance = distance;
-                }
+        for i in (0..n) {
+            if lambda[i] >= em[i] {
+                em[pi[i]] = em[pi[i]].min(lambda[i]);
+                lambda[i] = em[i];
+                pi[i] = n;
+            } else {
+                em[pi[i]] = em[pi[i]].min(em[i]);
             }
         }
 
-        maximal_distance
-    }
-
-    #[allow(non_snake_case)]
-    fn single_linkage(&self, A: &Dendrogram<usize>, B: &Dendrogram<usize>) -> f64 {
-        let mut minimal_distance = INFINITY;
-
-        for &a in A {
-            for &b in B {
-                let distance = self.distance(a, b);
-
-                if distance < minimal_distance {
-                    minimal_distance = distance;
-                }
+        for i in (0..n) {
+            if lambda[i] >= lambda[pi[i]] {
+                pi[i] = n;
             }
         }
-
-        minimal_distance
     }
 
-    fn distance(&self, i: usize, j: usize) -> f64 {
-        assert!(i != j);
-        let (i, j) = if i < j { (i, j) } else { (j, i) };
-        self.distances[i][j - i - 1]
+    // convert pointer representation to dendrogram
+    let mut dendrograms: Vec<_> = (0..points.len()).map(|i|
+        Some(Box::new(Dendrogram::Leaf(points[i])))).collect();
+
+    let mut idx: Vec<_> = (0..points.len()).collect();
+    idx.sort_by(|&a, &b| lambda[a].partial_cmp(&lambda[b]).unwrap());
+
+    for i in (0..points.len()-1) {
+        let leaf = idx[i];
+        let merge = pi[leaf];
+
+        let a = replace(&mut dendrograms[leaf], None).unwrap();
+        let b = replace(&mut dendrograms[merge], None).unwrap();
+
+        if leaf < merge {
+            dendrograms[merge] = Some(Box::new(Dendrogram::Branch(lambda[leaf], a, b)));
+        } else {
+            dendrograms[leaf] = Some(Box::new(Dendrogram::Branch(lambda[leaf], b, a)));
+        }
     }
+
+    dendrograms.swap_remove(points.len() - 1).unwrap()
+}
+
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+fn minimal_distance(d: &DistanceFunction, A: &Dendrogram<usize>, B: &Dendrogram<usize>)
+    -> f64
+{
+    let mut minimal_distance = INFINITY;
+
+    for &a in A {
+        for &b in B {
+            let distance = d(a, b);
+
+            if distance < minimal_distance {
+                minimal_distance = distance;
+            }
+        }
+    }
+
+    minimal_distance
+}
+
+#[allow(non_snake_case)]
+fn maximal_distance(d: &DistanceFunction, A: &Dendrogram<usize>, B: &Dendrogram<usize>)
+    -> f64
+{
+    let mut maximal_distance = NEG_INFINITY;
+
+    for &a in A {
+        for &b in B {
+            let distance = d(a, b);
+
+            if distance > maximal_distance {
+                maximal_distance = distance;
+            }
+        }
+    }
+
+    maximal_distance
 }
 
 
@@ -205,6 +293,20 @@ pub enum Dendrogram<T> {
 
     /// The leaf node contains an element.
     Leaf(T)
+}
+
+impl<T: PartialEq> PartialEq for Dendrogram<T> {
+    fn eq(&self, other: &Self) -> bool {
+        if let (&Dendrogram::Leaf(ref a), &Dendrogram::Leaf(ref b)) = (self, other) {
+            a == b
+        } else if let (&Dendrogram::Branch(d1, ref a1, ref b1),
+            &Dendrogram::Branch(d2, ref a2, ref b2)) = (self, other)
+        {
+            d1 == d2 && ((a1 == a2 && b1 == b2) || (a1 == b2 && a2 == b1))
+        } else {
+            false
+        }
+    }
 }
 
 
@@ -240,5 +342,88 @@ impl<'a, T> IntoIterator for &'a Dendrogram<T> {
         Elements {
             items: vec![self]
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use quickcheck::{Arbitrary, Gen, TestResult, quickcheck};
+
+    use Euclid;
+    use super::{Agglomerative, LinkageCriterion, minimal_distance};
+
+    #[test]
+    fn test_slink() {
+        fn prop(points: Vec<Euclid<[f64; 2]>>) -> TestResult {
+            if points.len() == 0 {
+                return TestResult::discard();
+            }
+
+            let optimal = Agglomerative::new(&points, LinkageCriterion::Single);
+            let naive = Agglomerative::new(&points, LinkageCriterion::Custom(&minimal_distance));
+
+            TestResult::from_bool(optimal.dendrogram() == naive.dendrogram())
+        }
+        quickcheck(prop as fn(Vec<Euclid<[f64; 2]>>) -> TestResult);
+    }
+
+    impl Arbitrary for Euclid<[f64; 2]> {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Euclid([Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)])
+        }
+    }
+}
+
+
+#[cfg(all(test, feature = "unstable"))]
+mod benches {
+    use rand::{XorShiftRng, Rng};
+    use test::Bencher;
+
+    use Euclid;
+    use super::{Agglomerative, LinkageCriterion, minimal_distance};
+
+    macro_rules! gen {
+        ($r: expr, 1) => {
+            [$r.gen::<f64>()]
+        };
+        ($r: expr, 2) => {
+            [$r.gen::<f64>(), $r.gen::<f64>()]
+        };
+        ($r: expr, 3) => {
+            [$r.gen::<f64>(), $r.gen::<f64>(), $r.gen::<f64>()]
+        };
+        ($r: expr, 9) => {
+            [$r.gen::<f64>(), $r.gen::<f64>(), $r.gen::<f64>(),
+             $r.gen::<f64>(), $r.gen::<f64>(), $r.gen::<f64>(),
+             $r.gen::<f64>(), $r.gen::<f64>(), $r.gen::<f64>()]
+        };
+    }
+
+    macro_rules! benches {
+        ($($name: ident, $l: expr, $d: tt, $n: expr;)*) => {
+            $(
+                #[bench]
+                fn $name(b: &mut Bencher) {
+                    let mut rng = XorShiftRng::new_unseeded();
+                    let points = (0..$n)
+                        .map(|_| Euclid(gen!(rng, $d)))
+                        .collect::<Vec<_>>();
+
+                    b.iter(|| Agglomerative::new(&points, $l))
+                }
+            )*
+        }
+    }
+
+    benches! {
+        single_slink_d1_n0010, LinkageCriterion::Single, 1,   10;
+        single_slink_d1_n0100, LinkageCriterion::Single, 1,  100;
+        single_slink_d1_n1000, LinkageCriterion::Single, 1, 1000;
+
+        single_naive_d1_n0010, LinkageCriterion::Custom(&minimal_distance), 1,   10;
+        single_naive_d1_n0100, LinkageCriterion::Custom(&minimal_distance), 1,  100;
+        //single_naive_d1_n1000, LinkageCriterion::Custom(&minimal_distance), 1, 1000;
     }
 }
