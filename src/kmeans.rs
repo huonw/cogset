@@ -262,24 +262,9 @@ mod benches {
     use Euclid;
     use rand::{XorShiftRng,Rng};
     use test::Bencher;
-    macro_rules! gen {
-        ($r: expr, 1) => {
-            [$r.gen::<f64>()]
-        };
-        ($r: expr, 2) => {
-            [$r.gen::<f64>(), $r.gen::<f64>()]
-        };
-        ($r: expr, 3) => {
-            [$r.gen::<f64>(), $r.gen::<f64>(), $r.gen::<f64>()]
-        };
-        ($r: expr, 9) => {
-            [$r.gen::<f64>(), $r.gen::<f64>(), $r.gen::<f64>(),
-             $r.gen::<f64>(), $r.gen::<f64>(), $r.gen::<f64>(),
-             $r.gen::<f64>(), $r.gen::<f64>(), $r.gen::<f64>()]
-        };
-    }
+
     macro_rules! benches {
-        ($($name: ident, $d: tt, $k: expr, $n: expr;)*) => {
+        ($($name: ident, $d: expr, $k: expr, $n: expr;)*) => {
             $(
                 #[bench]
                 fn $name(b: &mut Bencher) {
@@ -288,7 +273,7 @@ mod benches {
 
                     let mut rng = XorShiftRng::new_unseeded();
                     let points = (0..n)
-                        .map(|_| Euclid(gen!(rng, $d)))
+                        .map(|_| Euclid(rng.gen::<[f64; $d]>()))
                         .collect::<Vec<_>>();
 
                     b.iter(|| Kmeans::new(&points, k))

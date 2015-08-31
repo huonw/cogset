@@ -20,5 +20,5 @@ unstable = []
 order-stat = "0.1"
 
 [dev-dependencies]
-rand = "0.3"
+rand = "0.3.11"
 quickcheck = "^0.2.21"
