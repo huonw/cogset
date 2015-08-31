@@ -1,7 +1,9 @@
 use std::borrow::Borrow;
 use std::cmp::{min, max};
-use std::f64::{INFINITY, NEG_INFINITY};
+use std::f64::INFINITY;
 use std::mem::replace;
+
+#[cfg(test)] use std::f64::NEG_INFINITY;
 
 use {Point};
 
@@ -91,7 +93,7 @@ impl<'a, P: 'a + Point> Agglomerative<'a, P> {
 
         let dendrogram = match linkage {
             LinkageCriterion::Single => slink(&points),
-            LinkageCriterion::Complete => naive(&points, &maximal_distance),
+            LinkageCriterion::Complete => clink(&points),
             LinkageCriterion::Custom(f) => naive(&points, f)
         };
 
@@ -189,6 +191,7 @@ fn naive<'a, P: Point>(points: &Vec<&'a P>, linkage: &LinkageFunction)
 }
 
 
+// the SLINK algorithm to perform optimal single linkage clustering
 fn slink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
     // clustering while creating the proper pointer representation
     let mut pi = vec![0; points.len()];
@@ -245,6 +248,100 @@ fn slink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
 }
 
 
+// the CLINK algorithm to perform optimal complete linkage clustering
+fn clink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
+    // clustering while creating the proper pointer representation
+    let mut pi = vec![0; points.len()];
+    let mut lambda = vec![0.0; points.len()];
+    let mut em = vec![0.0; points.len()];
+
+    pi[0] = 0;
+    lambda[0] = INFINITY;
+
+
+    for n in (1..points.len()) {
+        pi[n] = n;
+        lambda[n] = INFINITY;
+
+        for i in (0..n) {
+            em[i] = points[i].dist(points[n]);
+        }
+
+        for i in (0..n) {
+            if lambda[i] < em[i] {
+                em[pi[i]] = em[pi[i]].max(em[i]);
+                em[i] = INFINITY;
+            }
+        }
+
+        let mut a = n - 1;
+
+        for i in (0..n) {
+            if lambda[n - i] >= em[pi[n - i]] {
+                if em[n - i] < em[a] {
+                    a = n - i;
+                }
+            } else  {
+                em[n - i] = INFINITY;
+            }
+        }
+
+        let mut b = replace(&mut pi[a], n); // n?
+        let mut c = replace(&mut lambda[a], em[a]);
+
+        loop {
+            if a < n - 1 {
+                if b < n - 1 {
+                    b = replace(&mut pi[b], n);
+                    c = replace(&mut lambda[b], c);
+
+                    continue;
+                } else if b == n - 1 { // TODO: Check that
+                    pi[b] = n;
+                    lambda[b] = c;
+                }
+            }
+
+            break;
+        }
+
+        for i in (0..n) {
+            if pi[pi[i]] == n && lambda[i] >= lambda[pi[i]] {
+                pi[i] = n;
+            }
+        }
+    }
+
+    println!("Pi {:?}", pi);
+    println!("lambda {:?}", lambda);
+    println!("em {:?}", em);
+
+    // TODO: DRY, move that into a function and use for SLINK and CLINK
+    // convert pointer representation to dendrogram
+    let mut dendrograms: Vec<_> = (0..points.len()).map(|i|
+        Some(Box::new(Dendrogram::Leaf(points[i])))).collect();
+
+    let mut idx: Vec<_> = (0..points.len()).collect();
+    idx.sort_by(|&a, &b| lambda[a].partial_cmp(&lambda[b]).unwrap());
+
+    for i in (0..points.len()-1) {
+        let leaf = idx[i];
+        let merge = pi[leaf];
+
+        let a = replace(&mut dendrograms[leaf], None).unwrap();
+        let b = replace(&mut dendrograms[merge], None).unwrap();
+
+        if leaf < merge {
+            dendrograms[merge] = Some(Box::new(Dendrogram::Branch(lambda[leaf], a, b)));
+        } else {
+            dendrograms[leaf] = Some(Box::new(Dendrogram::Branch(lambda[leaf], b, a)));
+        }
+    }
+
+    dendrograms.swap_remove(points.len() - 1).unwrap()
+}
+
+
 #[cfg(test)]
 #[allow(non_snake_case)]
 fn minimal_distance(d: &DistanceFunction, A: &Dendrogram<usize>, B: &Dendrogram<usize>)
@@ -265,6 +362,7 @@ fn minimal_distance(d: &DistanceFunction, A: &Dendrogram<usize>, B: &Dendrogram<
     minimal_distance
 }
 
+#[cfg(test)]
 #[allow(non_snake_case)]
 fn maximal_distance(d: &DistanceFunction, A: &Dendrogram<usize>, B: &Dendrogram<usize>)
     -> f64
@@ -351,7 +449,7 @@ mod tests {
     use quickcheck::{Arbitrary, Gen, TestResult, quickcheck};
 
     use Euclid;
-    use super::{Agglomerative, LinkageCriterion, minimal_distance};
+    use super::{Agglomerative, LinkageCriterion, minimal_distance, maximal_distance};
 
     #[test]
     fn test_slink() {
@@ -367,6 +465,23 @@ mod tests {
         }
         quickcheck(prop as fn(Vec<Euclid<[f64; 2]>>) -> TestResult);
     }
+
+/*
+    #[test]
+    fn test_clink() {
+        fn prop(points: Vec<Euclid<[f64; 2]>>) -> TestResult {
+            if points.len() == 0 {
+                return TestResult::discard();
+            }
+
+            let optimal = Agglomerative::new(&points, LinkageCriterion::Complete);
+            let naive = Agglomerative::new(&points, LinkageCriterion::Custom(&maximal_distance));
+
+            TestResult::from_bool(optimal.dendrogram() == naive.dendrogram())
+        }
+        quickcheck(prop as fn(Vec<Euclid<[f64; 2]>>) -> TestResult);
+    }
+    */
 
     impl Arbitrary for Euclid<[f64; 2]> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -384,31 +499,14 @@ mod benches {
     use Euclid;
     use super::{Agglomerative, LinkageCriterion, minimal_distance};
 
-    macro_rules! gen {
-        ($r: expr, 1) => {
-            [$r.gen::<f64>()]
-        };
-        ($r: expr, 2) => {
-            [$r.gen::<f64>(), $r.gen::<f64>()]
-        };
-        ($r: expr, 3) => {
-            [$r.gen::<f64>(), $r.gen::<f64>(), $r.gen::<f64>()]
-        };
-        ($r: expr, 9) => {
-            [$r.gen::<f64>(), $r.gen::<f64>(), $r.gen::<f64>(),
-             $r.gen::<f64>(), $r.gen::<f64>(), $r.gen::<f64>(),
-             $r.gen::<f64>(), $r.gen::<f64>(), $r.gen::<f64>()]
-        };
-    }
-
     macro_rules! benches {
-        ($($name: ident, $l: expr, $d: tt, $n: expr;)*) => {
+        ($($name: ident, $l: expr, $d: expr, $n: expr;)*) => {
             $(
                 #[bench]
                 fn $name(b: &mut Bencher) {
                     let mut rng = XorShiftRng::new_unseeded();
                     let points = (0..$n)
-                        .map(|_| Euclid(gen!(rng, $d)))
+                        .map(|_| Euclid(rng.gen::<[f64; $d]>()))
                         .collect::<Vec<_>>();
 
                     b.iter(|| Agglomerative::new(&points, $l))
