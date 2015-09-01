@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::cmp::{Ordering, min, max};
 use std::f64::INFINITY;
 use std::mem::replace;
@@ -114,7 +113,7 @@ impl<'a, P: 'a + Point> Agglomerative<'a, P> {
 
         let mut i = 0;
         while i < clusters.len() {
-            if let &Dendrogram::Branch(d, ref a, ref b) = clusters[i].borrow() {
+            if let Dendrogram::Branch(d, ref a, ref b) = **clusters[i] {
                 if d > threshold {
                     clusters.swap_remove(i);
                     clusters.push(a);
