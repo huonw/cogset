@@ -1,13 +1,13 @@
 use std::borrow::Borrow;
-use std::cmp::{min, max};
-use std::f64::{INFINITY, NEG_INFINITY};
+use std::cmp::{Ordering, min, max};
+use std::f64::INFINITY;
 use std::mem::replace;
 
 use {Point};
 
 
 /// A function to compute the inter-cluster distance between set `A` and `B`.
-pub type LinkageFunction = Fn(&Fn(usize, usize) -> f64, &Dendrogram<usize>, &Dendrogram<usize>) -> f64;
+pub type LinkageFunction = Fn(&Fn(usize, usize) -> f64, &[usize], &[usize]) -> f64;
 
 
 /// Hierarchical linkage criteria.
@@ -140,59 +140,62 @@ impl<'a, P: 'a + Point> Agglomerative<'a, P> {
 fn naive<'a, P: Point>(points: &Vec<&'a P>, linkage: &LinkageFunction)
     -> Box<Dendrogram<&'a P>>
 {
-    let n = points.len();
-
-    // pre-compute distances, using as few space as possible,
-    // we assume that d(i,j) = d(j,i) and d(i,i) = 0
-    let distances: Vec<Vec<f64>> = (0..n).map(|i| {
-        (i+1..n).map(|j| points[i].dist(points[j])).collect()
+    let point_distances: Vec<Vec<f64>> = (0..points.len()).map(|i| {
+        (0..i).map(|j| points[i].dist(points[j])).collect()
     }).collect();
 
-    // TODO: Why is the move required? How could this closure outlive the currenct function?
-    let d = move |i: usize, j: usize| {
-        if i == j {
-            0.0
-        } else {
-            let (i, j) = if i < j { (i, j) } else { (j, i) };
-            distances[i][j - i - 1]
-        }
-    };
+    let mut cluster_distances = point_distances.clone();
 
-    let mut clusters: Vec<_> = (0..n).map(|i| Box::new(Dendrogram::Leaf(i))).collect();
+    let mut clusters: Vec<_> = (0..points.len()).map(|i| Cluster {
+        max_index: i,
+        dendrogram: Box::new(Dendrogram::Leaf(points[i])),
+        elements: vec![i]
+    }).collect();
 
-    // there must be two clusters to merge them
     while clusters.len() > 1 {
         let mut min_dist = INFINITY;
         let mut merge = (0, 0);
 
-        // find the next two clusters to merge
-        for i in (0..clusters.len()) {
-            for j in (i+1..clusters.len()) {
-                let distance = linkage(&d, &clusters[i], &clusters[j]);
+        for i in 1..clusters.len() {
+            for j in 0..i {
+                let a = clusters[i].max_index;
+                let b = clusters[j].max_index;
 
-                if distance < min_dist {
-                    min_dist = distance;
+                let d = cluster_distances[max(a, b)][min(a, b)];
+
+                if d < min_dist {
+                    min_dist = d;
                     merge = (i, j);
                 }
             }
         }
 
-        // remove first the one with the higher index
-        let a = clusters.swap_remove(max(merge.0, merge.1));
-        let b = clusters.swap_remove(min(merge.0, merge.1));
+        let a = clusters.swap_remove(merge.0);
+        let b = clusters.swap_remove(merge.1);
 
-        clusters.push(Box::new(Dendrogram::Branch(min_dist, b, a)));
+        let mut c = Cluster {
+            max_index: max(a.max_index, b.max_index),
+            dendrogram: Box::new(Dendrogram::Branch(min_dist, a.dendrogram, b.dendrogram)),
+            elements: a.elements
+        };
+        c.elements.extend(b.elements);
+
+        for i in &clusters {
+            cluster_distances[max(c.max_index, i.max_index)][min(c.max_index, i.max_index)] =
+                linkage(&|i: usize,j: usize| point_distances[max(i,j)][min(i,j)],
+                    &*c.elements, &i.elements);
+        }
+
+        clusters.push(c);
     }
 
-    fn convert<'a, P: Point>(points: &Vec<&'a P>, root: &Dendrogram<usize>) -> Box<Dendrogram<&'a P>> {
-        Box::new(match root {
-            &Dendrogram::Branch(d, ref a, ref b) =>
-                Dendrogram::Branch(d, convert(points, a), convert(points, b)),
-            &Dendrogram::Leaf(i) => Dendrogram::Leaf(points[i])
-        })
-    }
+    clusters.pop().unwrap().dendrogram
+}
 
-    convert(points, &clusters.pop().unwrap())
+struct Cluster<'a, P: 'a + Point> {
+    max_index: usize,
+    dendrogram: Box<Dendrogram<&'a P>>,
+    elements: Vec<usize>
 }
 
 
@@ -312,41 +315,26 @@ fn using_pointer_representation<'a, P, F>(points: &Vec<&'a P>, f: F) -> Box<Dend
 
 #[cfg(test)]
 #[allow(non_snake_case)]
-fn minimal_distance(d: &Fn(usize, usize) -> f64, A: &Dendrogram<usize>, B: &Dendrogram<usize>)
-    -> f64
-{
-    let mut minimal_distance = INFINITY;
-
-    for &a in A {
-        for &b in B {
-            let distance = d(a, b);
-
-            if distance < minimal_distance {
-                minimal_distance = distance;
-            }
-        }
-    }
-
-    minimal_distance
+fn minimal_distance(d: &Fn(usize, usize) -> f64, A: &[usize], B: &[usize]) -> f64 {
+    A.iter().flat_map(|&a|
+        B.iter().map(move |&b| Dist(d(a,b)))
+    ).min().unwrap().0
 }
 
 #[allow(non_snake_case)]
-fn maximal_distance(d: &Fn(usize, usize) -> f64, A: &Dendrogram<usize>, B: &Dendrogram<usize>)
-    -> f64
-{
-    let mut maximal_distance = NEG_INFINITY;
+fn maximal_distance(d: &Fn(usize, usize) -> f64, A: &[usize], B: &[usize]) -> f64 {
+    A.iter().flat_map(|&a|
+        B.iter().map(move |&b| Dist(d(a,b)))
+    ).max().unwrap().0
+}
 
-    for &a in A {
-        for &b in B {
-            let distance = d(a, b);
-
-            if distance > maximal_distance {
-                maximal_distance = distance;
-            }
-        }
+#[derive(PartialEq, PartialOrd)]
+struct Dist(f64);
+impl Eq for Dist { }
+impl Ord for Dist {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
     }
-
-    maximal_distance
 }
 
 
@@ -381,7 +369,6 @@ pub struct Elements<'a, T: 'a> {
     items: Vec<&'a Dendrogram<T>>
 }
 
-// TODO: More efficient `Elements` Iterator
 impl<'a, T> Iterator for Elements<'a, T> {
     type Item = &'a T;
 
