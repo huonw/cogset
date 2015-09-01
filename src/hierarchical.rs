@@ -1,21 +1,13 @@
 use std::borrow::Borrow;
 use std::cmp::{min, max};
-use std::f64::INFINITY;
+use std::f64::{INFINITY, NEG_INFINITY};
 use std::mem::replace;
-
-#[cfg(test)] use std::f64::NEG_INFINITY;
 
 use {Point};
 
-// TODO: More efficient `Elements` Iterator
-// TODO: Implement `CLINK` as alternative complete-linkage criterion
-
-
-/// A lookup function for point distances, i.e., `d(i,j)`.
-pub type DistanceFunction = Fn(usize, usize) -> f64;
 
 /// A function to compute the inter-cluster distance between set `A` and `B`.
-pub type LinkageFunction = Fn(&DistanceFunction, &Dendrogram<usize>, &Dendrogram<usize>) -> f64;
+pub type LinkageFunction = Fn(&Fn(usize, usize) -> f64, &Dendrogram<usize>, &Dendrogram<usize>) -> f64;
 
 
 /// Hierarchical linkage criteria.
@@ -25,6 +17,13 @@ pub type LinkageFunction = Fn(&DistanceFunction, &Dendrogram<usize>, &Dendrogram
 /// <script src="https://is.gd/BFouBe"></script>
 #[derive(Copy, Clone)]
 pub enum LinkageCriterion<'a> {
+    /// Minimum or single-linkage clustering.
+    ///
+    /// <p>
+    /// $$\min_{a \in A,\, b \in B} \, d(a, b)$$
+    /// </p>
+    Single,
+
     /// Maximum or complete-linkage clustering.
     ///
     /// <p>
@@ -32,12 +31,11 @@ pub enum LinkageCriterion<'a> {
     /// </p>
     Complete,
 
-    /// Minimum or single-linkage clustering.
+    /// An optimal version of complete-linkage clustering known as CLINK.
     ///
-    /// <p>
-    /// $$\min_{a \in A,\, b \in B} \, d(a, b)$$
-    /// </p>
-    Single,
+    /// **Beware:** It depends on the order of the elements and doesn't always return the best
+    /// dendrogram.
+    CLINK,
 
     /// Custom likage criterion.
     ///
@@ -54,15 +52,14 @@ pub enum LinkageCriterion<'a> {
 /// clusters is mainly defined by the linkage criterion and the `Point`'s distance
 /// metric.
 ///
+/// * **Single-linkage**: Implementation of the optimal SLINK [1] algorithm with O( n^2 ) time
+///   and O( n ) space complexity.
 /// * **Complete-linkage**: Currently a naive implementation with O( n^3 ) time
 ///   and O( n^2 ) space complexity.
-/// * **Single-linkage**: Implementation of the optimal SLINK [1] algorithm with O( n^2 ) time
+/// * **CLINK**: Implementation of the optimal CLINK [2] algorithm with O( n^2 ) time
 ///   and O( n ) space complexity.
 /// * **Custom**: _At least_ O( n^3 ) time and O( n^2 ) space complexity. The exact
 ///   complexity depends on the linkage criterion.
-///
-/// [1]: Sibson, R. (1973). SLINK: an optimally efficient algorithm for the single-link
-///      cluster method. The Computer Journal, 16(1), 30-34.
 ///
 /// # Examples
 ///
@@ -79,6 +76,13 @@ pub enum LinkageCriterion<'a> {
 ///
 /// println!("Dendogram: {:#?}", agglomerative.dendrogram());
 /// ```
+///
+/// # References
+///
+/// [1]: Sibson, R. (1973). SLINK: an optimally efficient algorithm for the single-link
+///      cluster method. The Computer Journal, 16(1), 30-34.
+/// [2]: Defays, D. (1977). An efficient algorithm for a complete link method. The Computer
+///     Journal, 20(4), 364-366.
 #[derive(Clone, Debug)]
 pub struct Agglomerative<'a, P: 'a + Point> {
     dendrogram: Box<Dendrogram<&'a P>>
@@ -93,7 +97,8 @@ impl<'a, P: 'a + Point> Agglomerative<'a, P> {
 
         let dendrogram = match linkage {
             LinkageCriterion::Single => slink(&points),
-            LinkageCriterion::Complete => clink(&points),
+            LinkageCriterion::Complete => naive(&points, &maximal_distance),
+            LinkageCriterion::CLINK => clink(&points),
             LinkageCriterion::Custom(f) => naive(&points, f)
         };
 
@@ -193,19 +198,7 @@ fn naive<'a, P: Point>(points: &Vec<&'a P>, linkage: &LinkageFunction)
 
 // the SLINK algorithm to perform optimal single linkage clustering
 fn slink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
-    // clustering while creating the proper pointer representation
-    let mut pi = vec![0; points.len()];
-    let mut lambda = vec![0.0; points.len()];
-    let mut em = vec![0.0; points.len()];
-
-    for n in (0..points.len()) {
-        pi[n] = n;
-        lambda[n] = INFINITY;
-
-        for i in (0..n) {
-            em[i] = points[i].dist(points[n]);
-        }
-
+    using_pointer_representation(points, |n, pi, lambda, em| {
         for i in (0..n) {
             if lambda[i] >= em[i] {
                 em[pi[i]] = em[pi[i]].min(lambda[i]);
@@ -221,52 +214,13 @@ fn slink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
                 pi[i] = n;
             }
         }
-    }
-
-    // convert pointer representation to dendrogram
-    let mut dendrograms: Vec<_> = (0..points.len()).map(|i|
-        Some(Box::new(Dendrogram::Leaf(points[i])))).collect();
-
-    let mut idx: Vec<_> = (0..points.len()).collect();
-    idx.sort_by(|&a, &b| lambda[a].partial_cmp(&lambda[b]).unwrap());
-
-    for i in (0..points.len()-1) {
-        let leaf = idx[i];
-        let merge = pi[leaf];
-
-        let a = replace(&mut dendrograms[leaf], None).unwrap();
-        let b = replace(&mut dendrograms[merge], None).unwrap();
-
-        if leaf < merge {
-            dendrograms[merge] = Some(Box::new(Dendrogram::Branch(lambda[leaf], a, b)));
-        } else {
-            dendrograms[leaf] = Some(Box::new(Dendrogram::Branch(lambda[leaf], b, a)));
-        }
-    }
-
-    dendrograms.swap_remove(points.len() - 1).unwrap()
+    })
 }
 
 
 // the CLINK algorithm to perform optimal complete linkage clustering
 fn clink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
-    // clustering while creating the proper pointer representation
-    let mut pi = vec![0; points.len()];
-    let mut lambda = vec![0.0; points.len()];
-    let mut em = vec![0.0; points.len()];
-
-    pi[0] = 0;
-    lambda[0] = INFINITY;
-
-
-    for n in (1..points.len()) {
-        pi[n] = n;
-        lambda[n] = INFINITY;
-
-        for i in (0..n) {
-            em[i] = points[i].dist(points[n]);
-        }
-
+    using_pointer_representation(points, |n, pi, lambda, em| {
         for i in (0..n) {
             if lambda[i] < em[i] {
                 em[pi[i]] = em[pi[i]].max(em[i]);
@@ -276,33 +230,29 @@ fn clink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
 
         let mut a = n - 1;
 
-        for i in (0..n) {
-            if lambda[n - i] >= em[pi[n - i]] {
-                if em[n - i] < em[a] {
-                    a = n - i;
+        for i in (0..n).rev() {
+            if lambda[i] >= em[pi[i]] {
+                if em[i] < em[a] {
+                    a = i;
                 }
-            } else  {
-                em[n - i] = INFINITY;
+            } else {
+                em[i] = INFINITY;
             }
         }
 
-        let mut b = replace(&mut pi[a], n); // n?
+        let mut b = replace(&mut pi[a], n);
         let mut c = replace(&mut lambda[a], em[a]);
 
-        loop {
-            if a < n - 1 {
-                if b < n - 1 {
-                    b = replace(&mut pi[b], n);
-                    c = replace(&mut lambda[b], c);
-
-                    continue;
-                } else if b == n - 1 { // TODO: Check that
-                    pi[b] = n;
-                    lambda[b] = c;
-                }
+        if a < n - 1 {
+            while  b < n - 1 {
+                b = replace(&mut pi[b], n);
+                c = replace(&mut lambda[b], c);
             }
 
-            break;
+            if b == n - 1 {
+                pi[b] = n;
+                lambda[b] = c;
+            }
         }
 
         for i in (0..n) {
@@ -310,13 +260,31 @@ fn clink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
                 pi[i] = n;
             }
         }
+    })
+}
+
+
+fn using_pointer_representation<'a, P, F>(points: &Vec<&'a P>, f: F) -> Box<Dendrogram<&'a P>>
+    where P: Point, F: Fn(usize, &mut Vec<usize>, &mut Vec<f64>, &mut Vec<f64>)
+{
+    let mut pi = vec![0; points.len()];
+    let mut lambda = vec![0.0; points.len()];
+    let mut em = vec![0.0; points.len()];
+
+    pi[0] = 0;
+    lambda[0] = INFINITY;
+
+    for n in (1..points.len()) {
+        pi[n] = n;
+        lambda[n] = INFINITY;
+
+        for i in (0..n) {
+            em[i] = points[i].dist(points[n]);
+        }
+
+        f(n, &mut pi, &mut lambda, &mut em);
     }
 
-    println!("Pi {:?}", pi);
-    println!("lambda {:?}", lambda);
-    println!("em {:?}", em);
-
-    // TODO: DRY, move that into a function and use for SLINK and CLINK
     // convert pointer representation to dendrogram
     let mut dendrograms: Vec<_> = (0..points.len()).map(|i|
         Some(Box::new(Dendrogram::Leaf(points[i])))).collect();
@@ -344,7 +312,7 @@ fn clink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
 
 #[cfg(test)]
 #[allow(non_snake_case)]
-fn minimal_distance(d: &DistanceFunction, A: &Dendrogram<usize>, B: &Dendrogram<usize>)
+fn minimal_distance(d: &Fn(usize, usize) -> f64, A: &Dendrogram<usize>, B: &Dendrogram<usize>)
     -> f64
 {
     let mut minimal_distance = INFINITY;
@@ -362,9 +330,8 @@ fn minimal_distance(d: &DistanceFunction, A: &Dendrogram<usize>, B: &Dendrogram<
     minimal_distance
 }
 
-#[cfg(test)]
 #[allow(non_snake_case)]
-fn maximal_distance(d: &DistanceFunction, A: &Dendrogram<usize>, B: &Dendrogram<usize>)
+fn maximal_distance(d: &Fn(usize, usize) -> f64, A: &Dendrogram<usize>, B: &Dendrogram<usize>)
     -> f64
 {
     let mut maximal_distance = NEG_INFINITY;
@@ -414,6 +381,7 @@ pub struct Elements<'a, T: 'a> {
     items: Vec<&'a Dendrogram<T>>
 }
 
+// TODO: More efficient `Elements` Iterator
 impl<'a, T> Iterator for Elements<'a, T> {
     type Item = &'a T;
 
@@ -446,13 +414,14 @@ impl<'a, T> IntoIterator for &'a Dendrogram<T> {
 
 #[cfg(test)]
 mod tests {
+    use permutohedron::Heap;
     use quickcheck::{Arbitrary, Gen, TestResult, quickcheck};
 
     use Euclid;
-    use super::{Agglomerative, LinkageCriterion, minimal_distance, maximal_distance};
+    use super::{Agglomerative, LinkageCriterion, minimal_distance};
 
     #[test]
-    fn test_slink() {
+    fn single() {
         fn prop(points: Vec<Euclid<[f64; 2]>>) -> TestResult {
             if points.len() == 0 {
                 return TestResult::discard();
@@ -466,22 +435,31 @@ mod tests {
         quickcheck(prop as fn(Vec<Euclid<[f64; 2]>>) -> TestResult);
     }
 
-/*
     #[test]
-    fn test_clink() {
+    fn complete() {
+        // CLINK is not equal to complete linnkage, it depends on the order of the elements
+        // thus we perform an exhaustive comparison to the native algorithm on all possible
+        // permutations using only small sets of elements
         fn prop(points: Vec<Euclid<[f64; 2]>>) -> TestResult {
-            if points.len() == 0 {
+            if points.len() == 0 || points.len() > 6 {
                 return TestResult::discard();
             }
 
-            let optimal = Agglomerative::new(&points, LinkageCriterion::Complete);
-            let naive = Agglomerative::new(&points, LinkageCriterion::Custom(&maximal_distance));
+            let naive = Agglomerative::new(&points, LinkageCriterion::Complete);
 
-            TestResult::from_bool(optimal.dendrogram() == naive.dendrogram())
+            let mut new = points.clone();
+            for points in Heap::new(&mut *new) {
+                let optimal = Agglomerative::new(&points, LinkageCriterion::CLINK);
+
+                if naive.dendrogram() == optimal.dendrogram() {
+                    return TestResult::from_bool(true);
+                }
+            }
+
+            TestResult::from_bool(false)
         }
         quickcheck(prop as fn(Vec<Euclid<[f64; 2]>>) -> TestResult);
     }
-    */
 
     impl Arbitrary for Euclid<[f64; 2]> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -523,5 +501,13 @@ mod benches {
         single_naive_d1_n0010, LinkageCriterion::Custom(&minimal_distance), 1,   10;
         single_naive_d1_n0100, LinkageCriterion::Custom(&minimal_distance), 1,  100;
         //single_naive_d1_n1000, LinkageCriterion::Custom(&minimal_distance), 1, 1000;
+
+        complete_d1_n0010, LinkageCriterion::Complete, 1,   10;
+        complete_d1_n0100, LinkageCriterion::Complete, 1,  100;
+        //complete_d1_n1000, LinkageCriterion::Complete, 1, 1000;
+
+        clink_d1_n0010, LinkageCriterion::CLINK, 1,   10;
+        clink_d1_n0100, LinkageCriterion::CLINK, 1,  100;
+        clink_d1_n1000, LinkageCriterion::CLINK, 1, 1000;
     }
 }

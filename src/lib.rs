@@ -16,7 +16,7 @@
 //!
 //! Hierarchical clustering algorithms:
 //!
-//! - Agglomerative bottm-up (`Agglomerative`)
+//! - Agglomerative bottom-up (`Agglomerative`)
 //!
 //! Others:
 //!
@@ -37,6 +37,7 @@
 #[cfg(all(test, feature = "unstable"))] extern crate test;
 #[cfg(test)] extern crate rand;
 #[cfg(test)] extern crate quickcheck;
+#[cfg(test)] extern crate permutohedron;
 
 extern crate order_stat;
 
@@ -61,4 +62,4 @@ mod kmeans;
 pub use kmeans::{Kmeans, KmeansBuilder};
 
 mod hierarchical;
-pub use hierarchical::{Agglomerative, LinkageCriterion, Dendrogram, Elements};
+pub use hierarchical::{Agglomerative, LinkageCriterion, LinkageFunction, Dendrogram, Elements};
