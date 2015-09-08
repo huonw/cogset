@@ -12,22 +12,16 @@ pub type LinkageFunction = Fn(&Fn(usize, usize) -> f64, &[usize], &[usize]) -> f
 /// Hierarchical linkage criteria.
 ///
 /// The linkage decides how the distance between clusters is computed.
-///
-/// <script src="https://is.gd/BFouBe"></script>
 #[derive(Copy, Clone)]
 pub enum LinkageCriterion<'a> {
     /// Minimum or single-linkage clustering.
     ///
-    /// <p>
-    /// $$\min_{a \in A,\, b \in B} \, d(a, b)$$
-    /// </p>
+    /// `min { d(a, b) | a ∈ A, b ∈ B }`
     Single,
 
     /// Maximum or complete-linkage clustering.
     ///
-    /// <p>
-    /// $$\max_{a \in A,\, b \in B} \, d(a, b)$$
-    /// </p>
+    /// `max { d(a, b) | a ∈ A, b ∈ B }`
     Complete,
 
     /// An optimal version of complete-linkage clustering known as CLINK.
