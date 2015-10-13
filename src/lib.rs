@@ -50,7 +50,8 @@ mod optics;
 pub use optics::{Optics, OpticsDbscanClustering};
 
 mod point;
-pub use point::{Point, RegionQuery, Points, ListPoints, BruteScan, BruteScanNeighbours, Euclid};
+pub use point::{Point, RegionQuery, Points, ListPoints, BruteScan, BruteScanNeighbours,
+                Euclid, Euclidean};
 
 mod kmeans;
 
