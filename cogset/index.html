@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `cogset` crate.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, cogset">
+
+    <title>cogset - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        
+        <p class='location'></p><script>window.sidebarCurrent = {name: 'cogset', ty: 'mod', relpath: '../'};</script>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press 'S' to search, '?' for more options..."
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content mod">
+<h1 class='fqn'><span class='in-band'>Crate <a class='mod' href=''>cogset</a><wbr></span><span class='out-of-band'><a href='stability.html'>[stability]</a> <span id='render-detail'>
+            <a id="collapse-all" href="#">[-]</a>&nbsp;<a id="expand-all" href="#">[+]</a>
+        </span><a id='src-0' href='../src/cogset/lib.rs.html#1-58'>[src]</a></span></h1>
+<div class='docblock'><p>Clustering algorithms.</p>
+
+<p><img src="http://upload.wikimedia.org/wikipedia/commons/e/e1/Cassetteandfreehub.jpg" alt="A cluster"></p>
+
+<p>This crate provides generic implementations of clustering
+algorithms, allowing them to work with any back-end &quot;point
+database&quot; that implements the required operations, e.g. one might
+be happy with using the naive collection <code>BruteScan</code> from this
+crate, or go all out and implement a specialised R*-tree for
+optimised performance.</p>
+
+<p>Density-based clustering algorithms:</p>
+
+<ul>
+<li>DBSCAN (<code>Dbscan</code>)</li>
+<li>OPTICS (<code>Optics</code>)</li>
+</ul>
+
+<p>Others:</p>
+
+<ul>
+<li><em>k</em>-means (<code>Kmeans</code>)</li>
+</ul>
+
+<p><a href="https://github.com/huonw/cogset">Source</a>.</p>
+
+<h1 id="installation" class='section-header'><a
+                           href="#installation">Installation</a></h1>
+<p>Add the following to your <code>Cargo.toml</code> file:</p>
+
+<pre><code class="language-toml">[dependencies]
+cogset = &quot;0.2&quot;
+</code></pre>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table>
+                    <tr>
+                        <td><a class='stability Unmarked' title='No stability level'></a><a class='struct' href='struct.BruteScan.html'
+                               title='cogset::BruteScan'>BruteScan</a></td>
+                        <td class='docblock short'><p>A point collection where queries are answered via brute-force
+scans over the whole list.</p>
+</td>
+                    </tr>
+                
+                    <tr>
+                        <td><a class='stability Unmarked' title='No stability level'></a><a class='struct' href='struct.BruteScanNeighbours.html'
+                               title='cogset::BruteScanNeighbours'>BruteScanNeighbours</a></td>
+                        <td class='docblock short'><p>An iterator over the neighbours of a point in a <code>BruteScan</code>.</p>
+</td>
+                    </tr>
+                
+                    <tr>
+                        <td><a class='stability Unmarked' title='No stability level'></a><a class='struct' href='struct.Dbscan.html'
+                               title='cogset::Dbscan'>Dbscan</a></td>
+                        <td class='docblock short'><p>Clustering via the DBSCAN algorithm[1].</p>
+</td>
+                    </tr>
+                
+                    <tr>
+                        <td><a class='stability Unmarked' title='No stability level'></a><a class='struct' href='struct.Euclid.html'
+                               title='cogset::Euclid'>Euclid</a></td>
+                        <td class='docblock short'><p>Points in ℝ<sup><i>n</i></sup> with the <i>L</i><sup>2</sup> norm.</p>
+</td>
+                    </tr>
+                
+                    <tr>
+                        <td><a class='stability Unmarked' title='No stability level'></a><a class='struct' href='struct.Kmeans.html'
+                               title='cogset::Kmeans'>Kmeans</a></td>
+                        <td class='docblock short'><p>Clustering via the <em>k</em>-means algorithm (aka Lloyd&#39;s algorithm).</p>
+</td>
+                    </tr>
+                
+                    <tr>
+                        <td><a class='stability Unmarked' title='No stability level'></a><a class='struct' href='struct.KmeansBuilder.html'
+                               title='cogset::KmeansBuilder'>KmeansBuilder</a></td>
+                        <td class='docblock short'><p>A builder for <em>k</em>-means to provide control over parameters for the
+algorithm.</p>
+</td>
+                    </tr>
+                
+                    <tr>
+                        <td><a class='stability Unmarked' title='No stability level'></a><a class='struct' href='struct.Optics.html'
+                               title='cogset::Optics'>Optics</a></td>
+                        <td class='docblock short'><p>Clustering via the OPTICS algorithm[1].</p>
+</td>
+                    </tr>
+                
+                    <tr>
+                        <td><a class='stability Unmarked' title='No stability level'></a><a class='struct' href='struct.OpticsDbscanClustering.html'
+                               title='cogset::OpticsDbscanClustering'>OpticsDbscanClustering</a></td>
+                        <td class='docblock short'><p>An iterator over clusters generated by OPTICS using a DBSCAN-like
+criterion for clustering.</p>
+</td>
+                    </tr>
+                </table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table>
+                    <tr>
+                        <td><a class='stability Unmarked' title='No stability level'></a><a class='trait' href='trait.Euclidean.html'
+                               title='cogset::Euclidean'>Euclidean</a></td>
+                        <td class='docblock short'></td>
+                    </tr>
+                
+                    <tr>
+                        <td><a class='stability Unmarked' title='No stability level'></a><a class='trait' href='trait.ListPoints.html'
+                               title='cogset::ListPoints'>ListPoints</a></td>
+                        <td class='docblock short'><p>Collections of points that can list everything they contain.</p>
+</td>
+                    </tr>
+                
+                    <tr>
+                        <td><a class='stability Unmarked' title='No stability level'></a><a class='trait' href='trait.Point.html'
+                               title='cogset::Point'>Point</a></td>
+                        <td class='docblock short'><p>A point in some (metric) space.</p>
+</td>
+                    </tr>
+                
+                    <tr>
+                        <td><a class='stability Unmarked' title='No stability level'></a><a class='trait' href='trait.Points.html'
+                               title='cogset::Points'>Points</a></td>
+                        <td class='docblock short'><p>A data structure that contains points of some sort.</p>
+</td>
+                    </tr>
+                
+                    <tr>
+                        <td><a class='stability Unmarked' title='No stability level'></a><a class='trait' href='trait.RegionQuery.html'
+                               title='cogset::RegionQuery'>RegionQuery</a></td>
+                        <td class='docblock short'><p>Collections of points that can be queried to find nearby points.</p>
+</td>
+                    </tr>
+                </table></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div class="shortcuts">
+            <h1>Keyboard shortcuts</h1>
+            <dl>
+                <dt>?</dt>
+                <dd>Show this help dialog</dd>
+                <dt>S</dt>
+                <dd>Focus the search field</dd>
+                <dt>&larrb;</dt>
+                <dd>Move up in search results</dd>
+                <dt>&rarrb;</dt>
+                <dd>Move down in search results</dd>
+                <dt>&#9166;</dt>
+                <dd>Go to active search result</dd>
+            </dl>
+        </div>
+        <div class="infos">
+            <h1>Search tricks</h1>
+            <p>
+                Prefix searches with a type followed by a colon (e.g.
+                <code>fn:</code>) to restrict the search to a given type.
+            </p>
+            <p>
+                Accepted types are: <code>fn</code>, <code>mod</code>,
+                <code>struct</code>, <code>enum</code>,
+                <code>trait</code>, <code>typedef</code> (or
+                <code>tdef</code>).
+            </p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "cogset";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script async src="../search-index.js"></script>
+</body>
+</html>

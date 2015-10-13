@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Optics` struct in crate `cogset`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Optics">
+
+    <title>cogset::Optics - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        
+        <p class='location'><a href='index.html'>cogset</a></p><script>window.sidebarCurrent = {name: 'Optics', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press 'S' to search, '?' for more options..."
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='index.html'>cogset</a>::<wbr><a class='struct' href=''>Optics</a><wbr></span><span class='out-of-band'><span id='render-detail'>
+            <a id="collapse-all" href="#">[-]</a>&nbsp;<a id="expand-all" href="#">[+]</a>
+        </span><a id='src-292' href='../src/cogset/optics.rs.html#70-77'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct Optics&lt;P: <a class='trait' href='../cogset/trait.Points.html' title='cogset::Points'>Points</a>&gt; <span class='where'>where P: <a class='trait' href='http://doc.rust-lang.org/nightly/core/hash/trait.Hash.html' title='core::hash::Hash'>Hash</a> + <a class='trait' href='http://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html' title='core::cmp::Eq'>Eq</a> + <a class='trait' href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a></span> {
+    // some fields omitted
+}</pre><div class='docblock'><p>Clustering via the OPTICS algorithm[1].</p>
+
+<blockquote>
+<p>[OPTICS] is an algorithm for finding density-based clusters in
+spatial data. [...] Its basic idea is similar to DBSCAN, but it
+addresses one of DBSCAN&#39;s major weaknesses: the problem of
+detecting meaningful clusters in data of varying density.<sup><a
+href="https://en.wikipedia.org/wiki/OPTICS_algorithm">wikipedia</a></sup></p>
+</blockquote>
+
+<p>An instance of <code>Optics</code> represents the dendrogram that OPTICS
+computes for a data set. Once computed, this dendrogram can then
+be queried for clustering structure, for example, a clustering
+similar to the one that would be computed by DBSCAN can be
+retrieved with <code>dbscan_clustering</code>.</p>
+
+<p>This uses the <code>P::Point</code> yielded by the iterators provided by
+<code>ListPoints</code> and <code>RegionQuery</code> as a unique identifier for each
+point. The algorithm will behave strangely if the identifier is
+not unique or not stable within a given execution of OPTICS. The
+identifier is cloned several times in the course of execution, so
+it should be cheap to duplicate (e.g. a <code>usize</code> index, or a <code>&amp;T</code>
+reference).</p>
+
+<p>[1]: Mihael Ankerst, Markus M. Breunig, Hans-Peter Kriegel, Jörg
+Sander (1999). <em>OPTICS: Ordering Points To Identify the Clustering
+Structure.</em> ACM SIGMOD international conference on Management of
+data. ACM Press. pp. 49–60.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1>
+<p>A basic example:</p>
+<pre id='rust-example-rendered' class='rust '>
+<span class='kw'>use</span> <span class='ident'>cogset</span>::{<span class='ident'>Optics</span>, <span class='ident'>BruteScan</span>, <span class='ident'>Euclid</span>};
+
+<span class='kw'>let</span> <span class='ident'>points</span> <span class='op'>=</span> [<span class='ident'>Euclid</span>([<span class='number'>0.1</span>]), <span class='ident'>Euclid</span>([<span class='number'>0.2</span>]), <span class='ident'>Euclid</span>([<span class='number'>1.0</span>])];
+
+<span class='kw'>let</span> <span class='ident'>scanner</span> <span class='op'>=</span> <span class='ident'>BruteScan</span>::<span class='ident'>new</span>(<span class='kw-2'>&amp;</span><span class='ident'>points</span>);
+<span class='kw'>let</span> <span class='ident'>optics</span> <span class='op'>=</span> <span class='ident'>Optics</span>::<span class='ident'>new</span>(<span class='ident'>scanner</span>, <span class='number'>0.2</span>, <span class='number'>2</span>);
+
+<span class='comment'>// use the same epsilon that OPTICS used</span>
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>clustering</span> <span class='op'>=</span> <span class='ident'>optics</span>.<span class='ident'>dbscan_clustering</span>(<span class='number'>0.2</span>);
+
+<span class='comment'>// get the clusters themselves</span>
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>clusters</span> <span class='op'>=</span> <span class='ident'>clustering</span>.<span class='ident'>by_ref</span>().<span class='ident'>collect</span>::<span class='op'>&lt;</span><span class='ident'>Vec</span><span class='op'>&lt;</span>_<span class='op'>&gt;&gt;</span>();
+<span class='comment'>// the first two points are the only cluster</span>
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>clusters</span>, <span class='kw-2'>&amp;</span>[<span class='kw-2'>&amp;</span>[<span class='number'>0</span>, <span class='number'>1</span>]]);
+<span class='comment'>// now the noise, which is just the last point</span>
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>clustering</span>.<span class='ident'>noise_points</span>(), <span class='kw-2'>&amp;</span>[<span class='number'>2</span>]);
+
+
+<span class='comment'>// cluster again, with a much smaller epsilon</span>
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>clustering</span> <span class='op'>=</span> <span class='ident'>optics</span>.<span class='ident'>dbscan_clustering</span>(<span class='number'>0.05</span>);
+
+<span class='comment'>// get the clusters themselves</span>
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>clusters</span> <span class='op'>=</span> <span class='ident'>clustering</span>.<span class='ident'>by_ref</span>().<span class='ident'>collect</span>::<span class='op'>&lt;</span><span class='ident'>Vec</span><span class='op'>&lt;</span>_<span class='op'>&gt;&gt;</span>();
+<span class='comment'>// no clusters (its less than the smallest distance between points)</span>
+<span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>clusters</span>.<span class='ident'>is_empty</span>());
+<span class='comment'>// everything is noise</span>
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>clustering</span>.<span class='ident'>noise_points</span>(), <span class='kw-2'>&amp;</span>[<span class='number'>0</span>, <span class='number'>1</span>, <span class='number'>2</span>]);
+</pre>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><a class='stability Unmarked' title='No stability level'></a><code>impl&lt;P: <a class='trait' href='../cogset/trait.RegionQuery.html' title='cogset::RegionQuery'>RegionQuery</a> + <a class='trait' href='../cogset/trait.ListPoints.html' title='cogset::ListPoints'>ListPoints</a>&gt; <a class='struct' href='../cogset/struct.Optics.html' title='cogset::Optics'>Optics</a>&lt;P&gt; <span class='where'>where P: <a class='trait' href='http://doc.rust-lang.org/nightly/core/hash/trait.Hash.html' title='core::hash::Hash'>Hash</a> + <a class='trait' href='http://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html' title='core::cmp::Eq'>Eq</a> + <a class='trait' href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a></span></code></h3><div class='impl-items'><h4 id='method.new' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.new' class='fnname'>new</a>(points: P, eps: <a href='http://doc.rust-lang.org/nightly/std/primitive.f64.html'>f64</a>, min_pts: <a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='struct' href='../cogset/struct.Optics.html' title='cogset::Optics'>Optics</a>&lt;P&gt;</code></h4>
+<div class='docblock'><p>Run the OPTICS algorithm on the index <code>points</code>, with the <code>eps</code>
+and <code>min_pts</code> parameters.</p>
+
+<p>The return value can be queried for the actual clustering
+structure using, for example, <code>dbscan_clustering</code>. The
+parameter <code>eps</code> is used as a performance enhancement, and
+should be made as small as possible for the use-case.</p>
+
+<p>NB. this computes the clustering dendrogram immediately,
+unlike <code>Dbscan</code>&#39;s laziness.</p>
+</div><h4 id='method.dbscan_clustering' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.dbscan_clustering' class='fnname'>dbscan_clustering</a>&lt;'a&gt;(&amp;'a self, eps: <a href='http://doc.rust-lang.org/nightly/std/primitive.f64.html'>f64</a>) -&gt; <a class='struct' href='../cogset/struct.OpticsDbscanClustering.html' title='cogset::OpticsDbscanClustering'>OpticsDbscanClustering</a>&lt;'a, P&gt;</code></h4>
+<div class='docblock'><p>Extract a clustering like one that DBSCAN would give.</p>
+
+<p>The returned type is similar to the <code>Dbscan</code> type: an iterator
+over the clusters (as vectors of points), along with the
+<code>noise_points</code> method to retrieve unclustered points.</p>
+
+<h1 id="panics" class='section-header'><a
+                           href="#panics">Panics</a></h1>
+<p><code>eps</code> must be less than the <code>eps</code> passed to <code>new</code>.</p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div class="shortcuts">
+            <h1>Keyboard shortcuts</h1>
+            <dl>
+                <dt>?</dt>
+                <dd>Show this help dialog</dd>
+                <dt>S</dt>
+                <dd>Focus the search field</dd>
+                <dt>&larrb;</dt>
+                <dd>Move up in search results</dd>
+                <dt>&rarrb;</dt>
+                <dd>Move down in search results</dd>
+                <dt>&#9166;</dt>
+                <dd>Go to active search result</dd>
+            </dl>
+        </div>
+        <div class="infos">
+            <h1>Search tricks</h1>
+            <p>
+                Prefix searches with a type followed by a colon (e.g.
+                <code>fn:</code>) to restrict the search to a given type.
+            </p>
+            <p>
+                Accepted types are: <code>fn</code>, <code>mod</code>,
+                <code>struct</code>, <code>enum</code>,
+                <code>trait</code>, <code>typedef</code> (or
+                <code>tdef</code>).
+            </p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "cogset";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script async src="../search-index.js"></script>
+</body>
+</html>

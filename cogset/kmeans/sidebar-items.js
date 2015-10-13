@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Kmeans","Clustering via the *k*-means algorithm (aka Lloyd's algorithm)."],["KmeansBuilder","A builder for *k*-means to provide control over parameters for the algorithm."]]});

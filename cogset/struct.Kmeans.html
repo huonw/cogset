@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Kmeans` struct in crate `cogset`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Kmeans">
+
+    <title>cogset::Kmeans - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        
+        <p class='location'><a href='index.html'>cogset</a></p><script>window.sidebarCurrent = {name: 'Kmeans', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press 'S' to search, '?' for more options..."
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='index.html'>cogset</a>::<wbr><a class='struct' href=''>Kmeans</a><wbr></span><span class='out-of-band'><span id='render-detail'>
+            <a id="collapse-all" href="#">[-]</a>&nbsp;<a id="expand-all" href="#">[+]</a>
+        </span><a id='src-4549' href='../src/cogset/kmeans.rs.html#32-37'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct Kmeans&lt;T&gt; {
+    // some fields omitted
+}</pre><div class='docblock'><p>Clustering via the <em>k</em>-means algorithm (aka Lloyd&#39;s algorithm).</p>
+
+<blockquote>
+<p><em>k</em>-means clustering aims to partition <em>n</em> observations into <em>k</em>
+clusters in which each observation belongs to the cluster with the
+nearest mean, serving as a prototype of the cluster.<sup><a
+href="https://en.wikipedia.org/wiki/K-means_clustering">wikipedia</a></sup></p>
+</blockquote>
+
+<p>This is a heuristic, iterative approximation to the true optimal
+assignment. The parameters used to control the approximation can
+be set via <code>KmeansBuilder</code>.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1><pre id='rust-example-rendered' class='rust '>
+<span class='kw'>use</span> <span class='ident'>cogset</span>::{<span class='ident'>Euclid</span>, <span class='ident'>Kmeans</span>};
+
+<span class='kw'>let</span> <span class='ident'>data</span> <span class='op'>=</span> [<span class='ident'>Euclid</span>([<span class='number'>0.0</span>, <span class='number'>0.0</span>]),
+            <span class='ident'>Euclid</span>([<span class='number'>1.0</span>, <span class='number'>0.5</span>]),
+            <span class='ident'>Euclid</span>([<span class='number'>0.2</span>, <span class='number'>0.2</span>]),
+            <span class='ident'>Euclid</span>([<span class='number'>0.3</span>, <span class='number'>0.8</span>]),
+            <span class='ident'>Euclid</span>([<span class='number'>0.0</span>, <span class='number'>1.0</span>])];
+<span class='kw'>let</span> <span class='ident'>k</span> <span class='op'>=</span> <span class='number'>3</span>;
+
+<span class='kw'>let</span> <span class='ident'>kmeans</span> <span class='op'>=</span> <span class='ident'>Kmeans</span>::<span class='ident'>new</span>(<span class='kw-2'>&amp;</span><span class='ident'>data</span>, <span class='ident'>k</span>);
+
+<span class='macro'>println</span><span class='macro'>!</span>(<span class='string'>&quot;{:?}&quot;</span>, <span class='ident'>kmeans</span>.<span class='ident'>clusters</span>());
+</pre>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><a class='stability Unmarked' title='No stability level'></a><code>impl&lt;T&gt; <a class='struct' href='../cogset/struct.Kmeans.html' title='cogset::Kmeans'>Kmeans</a>&lt;T&gt; <span class='where'>where <a class='struct' href='../cogset/struct.Euclid.html' title='cogset::Euclid'>Euclid</a>&lt;T&gt;: <a class='trait' href='../cogset/trait.Point.html' title='cogset::Point'>Point</a> + <a class='trait' href='../cogset/trait.Euclidean.html' title='cogset::Euclidean'>Euclidean</a> + <a class='trait' href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a></span></code></h3><div class='impl-items'><h4 id='method.new' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.new' class='fnname'>new</a>(data: <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='struct' href='../cogset/struct.Euclid.html' title='cogset::Euclid'>Euclid</a>&lt;T&gt;<a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>, k: <a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='struct' href='../cogset/struct.Kmeans.html' title='cogset::Kmeans'>Kmeans</a>&lt;T&gt;</code></h4>
+<div class='docblock'><p>Run k-means on <code>data</code> with the default settings.</p>
+</div><h4 id='method.clusters' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.clusters' class='fnname'>clusters</a>(&amp;self) -&gt; <a class='struct' href='http://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(<a class='struct' href='../cogset/struct.Euclid.html' title='cogset::Euclid'>Euclid</a>&lt;T&gt;, <a class='struct' href='http://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>&gt;)</a>&gt;</code></h4>
+<div class='docblock'><p>Retrieve the means and the clusters themselves that this
+<em>k</em>-means instance computed.</p>
+
+<p>The clusters are represented by vectors of indexes into the
+original data.</p>
+</div><h4 id='method.converged' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.converged' class='fnname'>converged</a>(&amp;self) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>, <a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>&gt;</code></h4>
+<div class='docblock'><p>Return whether the algorithm converged, and how many steps
+that took.</p>
+
+<p><code>Ok</code> is returned if the algorithm did meet the tolerance
+criterion, and <code>Err</code> if it reached the iteration limit
+instead.</p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div class="shortcuts">
+            <h1>Keyboard shortcuts</h1>
+            <dl>
+                <dt>?</dt>
+                <dd>Show this help dialog</dd>
+                <dt>S</dt>
+                <dd>Focus the search field</dd>
+                <dt>&larrb;</dt>
+                <dd>Move up in search results</dd>
+                <dt>&rarrb;</dt>
+                <dd>Move down in search results</dd>
+                <dt>&#9166;</dt>
+                <dd>Go to active search result</dd>
+            </dl>
+        </div>
+        <div class="infos">
+            <h1>Search tricks</h1>
+            <p>
+                Prefix searches with a type followed by a colon (e.g.
+                <code>fn:</code>) to restrict the search to a given type.
+            </p>
+            <p>
+                Accepted types are: <code>fn</code>, <code>mod</code>,
+                <code>struct</code>, <code>enum</code>,
+                <code>trait</code>, <code>typedef</code> (or
+                <code>tdef</code>).
+            </p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "cogset";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script async src="../search-index.js"></script>
+</body>
+</html>

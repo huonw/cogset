@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `kth` fn in crate `order_stat`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, kth">
+
+    <title>order_stat::kth - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        
+        <p class='location'><a href='index.html'>order_stat</a></p><script>window.sidebarCurrent = {name: 'kth', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press 'S' to search, '?' for more options..."
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content fn">
+<h1 class='fqn'><span class='in-band'>Function <a href='index.html'>order_stat</a>::<wbr><a class='fn' href=''>kth</a><wbr></span><span class='out-of-band'><span id='render-detail'>
+            <a id="collapse-all" href="#">[-]</a>&nbsp;<a id="expand-all" href="#">[+]</a>
+        </span><a id='src-948' href='../src/order_stat/lib.rs.html#112-117'>[src]</a></span></h1>
+<pre class='rust fn'>pub fn kth&lt;T: <a class='trait' href='http://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html' title='core::cmp::Ord'>Ord</a>&gt;(array: <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;mut [T]</a>, k: <a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; &amp;mut T</pre><div class='docblock'><p>Compute the <code>k</code>th order statistic (<code>k</code>th smallest element) of
+<code>array</code> via the Floyd-Rivest Algorithm[1].</p>
+
+<p>The return value is the same as that returned by the following
+function (although the final order of <code>array</code> may differ):</p>
+<pre id='rust-example-rendered' class='rust '>
+<span class='kw'>fn</span> <span class='ident'>kth_sort</span><span class='op'>&lt;</span><span class='ident'>T</span>: <span class='ident'>Ord</span><span class='op'>&gt;</span>(<span class='ident'>array</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> [<span class='ident'>T</span>], <span class='ident'>k</span>: <span class='ident'>usize</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>T</span> {
+    <span class='ident'>array</span>.<span class='ident'>sort</span>();
+    <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>array</span>[<span class='ident'>k</span>]
+}
+</pre>
+
+<p>That is, <code>k</code> is zero-indexed, so the minimum corresponds to <code>k = 0</code> and the maximum <code>k = array.len() - 1</code>. Furthermore, <code>array</code> is
+mutated, placing the <code>k</code>th order statistic into <code>array[k]</code> and
+partitioning the remaining values so that smaller elements lie
+before and larger after.</p>
+
+<p>If <em>n</em> is the length of <code>array</code>, <code>kth</code> operates with (expected)
+running time of <em>O(n)</em>, and a single query is usually much faster
+than sorting <code>array</code> (per <code>kth_sort</code>). However, if many order
+statistic queries need to be performed, it may be more efficient
+to sort and index directly.</p>
+
+<p>For convenience, a reference to the requested order statistic,
+<code>array[k]</code>, is returned directly. It is also accessibly via
+<code>array</code> itself.</p>
+
+<p>[1]: Robert W. Floyd and Ronald L. Rivest (1975). Algorithm 489:
+the algorithm SELECT—for finding the <em>i*th smallest of *n</em> elements
+[M1]. <em>Commun. ACM</em> <strong>18</strong>, 3,
+173. doi:<a href="http://doi.acm.org/10.1145/360680.360694">10.1145/360680.360694</a>.</p>
+
+<h1 id="panics" class='section-header'><a
+                           href="#panics">Panics</a></h1>
+<p>If <code>k &gt;= array.len()</code>, <code>kth</code> panics.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1><pre id='rust-example-rendered' class='rust '>
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>v</span> <span class='op'>=</span> [<span class='number'>10</span>, <span class='number'>0</span>, <span class='op'>-</span><span class='number'>10</span>, <span class='number'>20</span>];
+<span class='kw'>let</span> <span class='ident'>kth</span> <span class='op'>=</span> <span class='ident'>order_stat</span>::<span class='ident'>kth</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>v</span>, <span class='number'>2</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='op'>*</span><span class='ident'>kth</span>, <span class='number'>10</span>);
+</pre>
+
+<p>If the order of the original array, or position of the element is
+important, one can collect references to a temporary before querying.</p>
+<pre id='rust-example-rendered' class='rust '>
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>mem</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>v</span> <span class='op'>=</span> [<span class='number'>10</span>, <span class='number'>0</span>, <span class='op'>-</span><span class='number'>10</span>, <span class='number'>20</span>];
+
+<span class='comment'>// compute the order statistic of an array of references (the Ord</span>
+<span class='comment'>// impl defers to the internals, so this is correct)</span>
+<span class='kw'>let</span> <span class='ident'>kth</span> <span class='op'>=</span> <span class='op'>*</span><span class='ident'>order_stat</span>::<span class='ident'>kth</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>v</span>.<span class='ident'>iter</span>().<span class='ident'>collect</span>::<span class='op'>&lt;</span><span class='ident'>Vec</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='ident'>i32</span><span class='op'>&gt;&gt;</span>(), <span class='number'>2</span>);
+
+<span class='comment'>// the position is the difference between the start of the array</span>
+<span class='comment'>// and the order statistic&#39;s location.</span>
+<span class='kw'>let</span> <span class='ident'>index</span> <span class='op'>=</span> (<span class='ident'>kth</span> <span class='kw'>as</span> <span class='op'>*</span><span class='kw'>const</span> _ <span class='kw'>as</span> <span class='ident'>usize</span> <span class='op'>-</span> <span class='kw-2'>&amp;</span><span class='ident'>v</span>[<span class='number'>0</span>] <span class='kw'>as</span> <span class='op'>*</span><span class='kw'>const</span> _ <span class='kw'>as</span> <span class='ident'>usize</span>) <span class='op'>/</span> <span class='ident'>mem</span>::<span class='ident'>size_of_val</span>(<span class='kw-2'>&amp;</span><span class='ident'>v</span>[<span class='number'>0</span>]);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='op'>*</span><span class='ident'>kth</span>, <span class='number'>10</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>index</span>, <span class='number'>0</span>);
+</pre>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div class="shortcuts">
+            <h1>Keyboard shortcuts</h1>
+            <dl>
+                <dt>?</dt>
+                <dd>Show this help dialog</dd>
+                <dt>S</dt>
+                <dd>Focus the search field</dd>
+                <dt>&larrb;</dt>
+                <dd>Move up in search results</dd>
+                <dt>&rarrb;</dt>
+                <dd>Move down in search results</dd>
+                <dt>&#9166;</dt>
+                <dd>Go to active search result</dd>
+            </dl>
+        </div>
+        <div class="infos">
+            <h1>Search tricks</h1>
+            <p>
+                Prefix searches with a type followed by a colon (e.g.
+                <code>fn:</code>) to restrict the search to a given type.
+            </p>
+            <p>
+                Accepted types are: <code>fn</code>, <code>mod</code>,
+                <code>struct</code>, <code>enum</code>,
+                <code>trait</code>, <code>typedef</code> (or
+                <code>tdef</code>).
+            </p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "order_stat";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script async src="../search-index.js"></script>
+</body>
+</html>
