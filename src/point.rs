@@ -16,6 +16,15 @@ pub trait Point {
     }
 }
 
+impl<'a, P: Point + ?Sized> Point for &'a P {
+    fn dist(&self, other: &Self) -> f64 {
+        (**self).dist(other)
+    }
+    fn dist_lower_bound(&self, other: &Self) -> f64 {
+        (**self).dist_lower_bound(other)
+    }
+}
+
 /// A data structure that contains points of some sort.
 pub trait Points {
     /// The representation of a point.
@@ -112,7 +121,7 @@ impl<'a,P: Point> Iterator for BruteScanNeighbours<'a, P> {
     type Item = (f64, usize);
 
     fn next(&mut self) -> Option<(f64,usize)> {
-        let BruteScanNeighbours { ref mut points, ref point, eps } = *self;
+        let BruteScanNeighbours { ref mut points, point, eps } = *self;
 
         points.filter_map(|(i, p)| {
             if point.dist_lower_bound(p) <= eps {
