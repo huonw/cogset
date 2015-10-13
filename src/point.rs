@@ -264,6 +264,11 @@ macro_rules! euclidean_points {
                 }
 
                 #[inline]
+                fn monotonic_inverse(x: f64) -> f64 {
+                    x.sqrt()
+                }
+
+                #[inline]
                 fn dist_lower_bound(&self, other: &Euclid<[f64; $e]>) -> f64 {
                     (self.0[0] - other.0[0]).abs()
                 }
