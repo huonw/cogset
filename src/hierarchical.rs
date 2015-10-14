@@ -195,7 +195,7 @@ struct Cluster<'a, P: 'a + Point> {
 // the SLINK algorithm to perform optimal single linkage clustering
 fn slink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
     using_pointer_representation(points, |n, pi, lambda, em| {
-        for i in (0..n) {
+        for i in 0..n {
             if lambda[i] >= em[i] {
                 em[pi[i]] = em[pi[i]].min(lambda[i]);
                 lambda[i] = em[i];
@@ -205,7 +205,7 @@ fn slink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
             }
         }
 
-        for i in (0..n) {
+        for i in 0..n {
             if lambda[i] >= lambda[pi[i]] {
                 pi[i] = n;
             }
@@ -217,7 +217,7 @@ fn slink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
 // the CLINK algorithm to perform optimal complete linkage clustering
 fn clink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
     using_pointer_representation(points, |n, pi, lambda, em| {
-        for i in (0..n) {
+        for i in 0..n {
             if lambda[i] < em[i] {
                 em[pi[i]] = em[pi[i]].max(em[i]);
                 em[i] = INFINITY;
@@ -251,7 +251,7 @@ fn clink<'a, P: Point>(points: &Vec<&'a P>) -> Box<Dendrogram<&'a P>> {
             }
         }
 
-        for i in (0..n) {
+        for i in 0..n {
             if pi[pi[i]] == n && lambda[i] >= lambda[pi[i]] {
                 pi[i] = n;
             }
@@ -270,11 +270,11 @@ fn using_pointer_representation<'a, P, F>(points: &Vec<&'a P>, f: F) -> Box<Dend
     pi[0] = 0;
     lambda[0] = INFINITY;
 
-    for n in (1..points.len()) {
+    for n in 1..points.len() {
         pi[n] = n;
         lambda[n] = INFINITY;
 
-        for i in (0..n) {
+        for i in 0..n {
             em[i] = points[i].dist(points[n]);
         }
 
@@ -288,7 +288,7 @@ fn using_pointer_representation<'a, P, F>(points: &Vec<&'a P>, f: F) -> Box<Dend
     let mut idx: Vec<_> = (0..points.len()).collect();
     idx.sort_by(|&a, &b| lambda[a].partial_cmp(&lambda[b]).unwrap());
 
-    for i in (0..points.len()-1) {
+    for i in 0..points.len()-1 {
         let leaf = idx[i];
         let merge = pi[leaf];
 
