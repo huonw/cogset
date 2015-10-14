@@ -1,10 +1,104 @@
 /// A point in some (metric) space.
+///
+/// # Example
+///
+/// ```rust
+/// use cogset::Point;
+///
+/// struct TwoD {
+///     x: f64, y: f64
+/// }
+///
+/// impl Point for TwoD {
+///     fn dist(&self, other: &TwoD) -> f64 {
+///         self.dist_monotonic(other).sqrt()
+///     }
+///
+///     // these three methods together are optional, but can provide an
+///     // optimisation for some algorithms (if one is implemented the
+///     // others must be too)
+///     fn dist_monotonic(&self, other: &TwoD) -> f64 {
+///         let dx = self.x - other.x;
+///         let dy = self.y - other.y;
+///         dx * dx + dy * dy
+///     }
+///     fn monotonic_transform(x: f64) -> f64 {
+///         x * x
+///     }
+///     fn monotonic_inverse(x: f64) -> f64 {
+///         x.sqrt()
+///     }
+///
+///     // another optimisation for some algorithms (if `dist` is
+///     // cheap to compute this can just be left off entirely)
+///     fn dist_lower_bound(&self, other: &TwoD) -> f64 {
+///         (self.x - other.x).abs()
+///     }
+/// }
+/// ```
 pub trait Point {
-    /// Accurate compute the distance from `self` to `other`.
+    /// Accurately compute the distance from `self` to `other`.
     ///
     /// This should be real and non-negative, or else algorithms may
     /// return unexpected results.
     fn dist(&self, other: &Self) -> f64;
+
+    /// Accurately compute some monotonic function of the distance
+    /// from `self` to `other`.
+    ///
+    /// This should satisfy `a.dist_monotonic(b) ==
+    /// Self::monotonic_transform(a.dist(b))` where
+    /// `Self::monotonic_transform` has been implemented to be
+    /// increasing and non-negative.
+    ///
+    /// This can be used to optimize algorithms that care only about
+    /// the ordering of distances, not their magnitude, since it may
+    /// be implemented more efficiently than `a.dist(b)` itself. For
+    /// example, for the 2-D Euclidean distance between
+    /// (<i>x</i><sub>0</sub>, <i>y</i><sub>0</sub>) and
+    /// (<i>x</i><sub>1</sub>, <i>y</i><sub>1</sub>), `dist_monotonic`
+    /// could be Δ = (<i>x</i><sub>0</sub> -
+    /// <i>x</i><sub>1</sub>)<sup>2</sup> + (<i>y</i><sub>0</sub> -
+    /// <i>y</i><sub>1</sub>)<sup>2</sup> (i.e. `monotonic_transform`
+    /// is <i>x</i> ↦ <i>x</i><sup>2</sup>) instead of sqrt(Δ) as
+    /// `dist` requires.
+    ///
+    /// **Warning**: changes to this should be reflected by changes to
+    /// `monotonic_transform` and `monotonic_inverse`.
+    fn dist_monotonic(&self, other: &Self) -> f64 {
+        self.dist(other)
+    }
+
+    /// Perform the increasing and non-negative transformation that
+    /// `dist_monotonic` applies to `dist`.
+    ///
+    /// It should satisfy:
+    ///
+    /// - `a.dist_monotonic(b) ==
+    ///    Self::monotonic_transform(a.dist(b))` for all points `a` and
+    ///    `b`,
+    ///
+    /// - `Self::monotonic_transform(x) <
+    ///    Self::monotonic_transform(y)` if and only if `x < y`, for
+    ///    `x >= 0`, `y >= 0`.
+    ///
+    /// **Warning**: changes to this should be reflected by changes to
+    /// `dist_monotonic` and `monotonic_inverse`.
+    fn monotonic_transform(x: f64) -> f64 {
+        x
+    }
+
+    /// Perform the inverse of `monotonic_transform` to `x`.
+    ///
+    /// This should satisfy
+    /// `Self::monotonic_transform(Self::monotonic_inverse(x)) == x`
+    /// and similarly with the application order reversed.
+    ///
+    /// **Warning**: changes to this should be reflected by changes to
+    /// `dist_monotonic` and `monotonic_transform`.
+    fn monotonic_inverse(x: f64) -> f64 {
+        x
+    }
 
     /// Compute an estimate of the distance from `self` to `other`.
     ///
@@ -13,6 +107,15 @@ pub trait Point {
     #[allow(unused_variables)]
     fn dist_lower_bound(&self, other: &Self) -> f64 {
         ::std::f64::NEG_INFINITY
+    }
+}
+
+impl<'a, P: Point + ?Sized> Point for &'a P {
+    fn dist(&self, other: &Self) -> f64 {
+        (**self).dist(other)
+    }
+    fn dist_lower_bound(&self, other: &Self) -> f64 {
+        (**self).dist_lower_bound(other)
     }
 }
 
@@ -112,7 +215,7 @@ impl<'a,P: Point> Iterator for BruteScanNeighbours<'a, P> {
     type Item = (f64, usize);
 
     fn next(&mut self) -> Option<(f64,usize)> {
-        let BruteScanNeighbours { ref mut points, ref point, eps } = *self;
+        let BruteScanNeighbours { ref mut points, point, eps } = *self;
 
         points.filter_map(|(i, p)| {
             if point.dist_lower_bound(p) <= eps {
@@ -134,17 +237,38 @@ pub trait Euclidean {
     fn zero() -> Self;
     fn add(&mut self, &Self);
     fn scale(&mut self, f64);
-    fn dist2(&self, other: &Self) -> f64;
 }
 
 macro_rules! euclidean_points {
     ($($e: expr),*) => {
         $(
             impl Point for Euclid<[f64; $e]> {
+                #[inline]
                 fn dist(&self, other: &Euclid<[f64; $e]>) -> f64 {
-                    self.dist2(other).sqrt()
+                    self.dist_monotonic(other).sqrt()
                 }
 
+                #[inline]
+                fn dist_monotonic(&self, other: &Euclid<[f64; $e]>) -> f64 {
+                    self.0.iter().zip(other.0.iter())
+                        .map(|(a, b)| {
+                            let d = *a - *b;
+                            d * d
+                        })
+                        .fold(0.0, |a, b| a + b)
+                }
+
+                #[inline]
+                fn monotonic_transform(x: f64) -> f64 {
+                    x * x
+                }
+
+                #[inline]
+                fn monotonic_inverse(x: f64) -> f64 {
+                    x.sqrt()
+                }
+
+                #[inline]
                 fn dist_lower_bound(&self, other: &Euclid<[f64; $e]>) -> f64 {
                     (self.0[0] - other.0[0]).abs()
                 }
@@ -162,14 +286,6 @@ macro_rules! euclidean_points {
                     for place in &mut self.0 {
                         *place *= factor
                     }
-                }
-                fn dist2(&self, other: &Euclid<[f64; $e]>) -> f64 {
-                    self.0.iter().zip(other.0.iter())
-                        .map(|(a, b)| {
-                            let d = *a - *b;
-                            d * d
-                        })
-                        .fold(0.0, |a, b| a + b)
                 }
             }
             )*
