@@ -45,11 +45,11 @@ pub enum LinkageCriterion<'a> {
 /// clusters is mainly defined by the linkage criterion and the `Point`'s distance
 /// metric.
 ///
-/// * **Single-linkage**: Implementation of the optimal SLINK [1] algorithm with O( n^2 ) time
-///   and O( n ) space complexity.
+/// * **Single-linkage**: Implementation of the optimal SLINK [[1]](#slink) algorithm with
+///   O( n^2 ) time and O( n ) space complexity.
 /// * **Complete-linkage**: Currently a naive implementation with O( n^3 ) time
 ///   and O( n^2 ) space complexity.
-/// * **CLINK**: Implementation of the optimal CLINK [2] algorithm with O( n^2 ) time
+/// * **CLINK**: Implementation of the optimal CLINK [[2]](#clink) algorithm with O( n^2 ) time
 ///   and O( n ) space complexity.
 /// * **Custom**: _At least_ O( n^3 ) time and O( n^2 ) space complexity. The exact
 ///   complexity depends on the linkage criterion.
@@ -72,10 +72,10 @@ pub enum LinkageCriterion<'a> {
 ///
 /// # References
 ///
-/// [1]: Sibson, R. (1973). SLINK: an optimally efficient algorithm for the single-link
-///      cluster method. The Computer Journal, 16(1), 30-34.
-/// [2]: Defays, D. (1977). An efficient algorithm for a complete link method. The Computer
-///     Journal, 20(4), 364-366.
+/// * <a name="slink">[1]</a>: Sibson, R. (1973). *SLINK: an optimally efficient algorithm for
+///   the single-link cluster method.* The Computer Journal, 16(1), 30-34.
+/// * <a name="clink">[2]</a>: Defays, D. (1977). *An efficient algorithm for a complete link
+///   method. The Computer Journal*, 20(4), 364-366.
 #[derive(Clone, Debug)]
 pub struct Agglomerative<'a, P: 'a + Point> {
     dendrogram: Box<Dendrogram<&'a P>>
