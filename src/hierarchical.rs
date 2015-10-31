@@ -380,6 +380,30 @@ pub enum Dendrogram<T> {
     Leaf(T)
 }
 
+impl<T: Clone> Dendrogram<T> {
+    /// Extract clusters given a certain threshold `threshold`.
+    pub fn cut_at(&self, threshold: f64) -> Vec<Vec<T>> {
+        let mut dendrograms = vec![self];
+        let mut clusters = vec![];
+
+        while let Some(dendrogram) = dendrograms.pop() {
+            match dendrogram {
+                &Dendrogram::Leaf(ref i) => clusters.push(vec![i.clone()]),
+                &Dendrogram::Branch(d, ref a, ref b) => {
+                    if d < threshold {
+                        clusters.push(dendrogram.into_iter().map(|i| i.clone()).collect());
+                    } else {
+                        dendrograms.push(a);
+                        dendrograms.push(b);
+                    }
+                }
+            }
+        }
+
+        return clusters;
+    }
+}
+
 impl<T: PartialEq> PartialEq for Dendrogram<T> {
     fn eq(&self, other: &Self) -> bool {
         if let (&Dendrogram::Leaf(ref a), &Dendrogram::Leaf(ref b)) = (self, other) {
@@ -466,6 +490,23 @@ mod tests {
             let naive = NaiveBottomUp::new(SingleLinkage).cluster(&*points, threshold);
 
             TestResult::from_bool(eq_clusters(&optimal, &naive))
+        }
+        quickcheck(prop as fn(Vec<Euclid<[f64; 2]>>, f64) -> TestResult);
+    }
+
+    #[test]
+    fn dendrogram_cut_at() {
+        fn prop(points: Vec<Euclid<[f64; 2]>>, threshold: f64) -> TestResult {
+            if points.len() == 0 || threshold <= 0.0 {
+                return TestResult::discard();
+            }
+
+            let algo = NaiveBottomUp::new(SingleLinkage);
+
+            let one = algo.cluster(&*points, threshold);
+            let two = algo.compute_dendrogram(&*points).cut_at(threshold);
+
+            TestResult::from_bool(eq_clusters(&one, &two))
         }
         quickcheck(prop as fn(Vec<Euclid<[f64; 2]>>, f64) -> TestResult);
     }
