@@ -120,7 +120,7 @@ struct Cluster {
 /// optimizations. Check the implementations of `AgglomerativeClustering` to see if there is
 /// an optimized implementation for a certain criterion.
 ///
-/// The general case has a O( n^3 ) time complexity and O( n`2 ) space complexity. Beware,
+/// The general case has a O( n^3 ) time complexity and O( n^2 ) space complexity. Beware,
 /// they might be even worse depending on the linkage criterion.
 pub struct NaiveBottomUp<L: LinkageCriterion> {
     linkage: L,
