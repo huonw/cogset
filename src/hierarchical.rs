@@ -19,8 +19,12 @@ pub trait AgglomerativeClustering {
     ///
     /// If you need to cluster certain points repeatidly with different thresholds, it might
     /// makes sense to use `compute_dendrogram()` to build a full dendrogram and use its
-    /// `cut_at` method to extract clusters afterwards.
-    fn cluster<P: Point>(&self, points: &[P], threshold: f64) -> Vec<Vec<usize>>;
+    /// `cut_at()` method to extract clusters afterwards.
+    ///
+    /// The default implementation uses `compute_dendrogram()` and `cut_at()` to cluster.
+    fn cluster<P: Point>(&self, points: &[P], threshold: f64) -> Vec<Vec<usize>> {
+        self.compute_dendrogram(points).cut_at(threshold)
+    }
 
     /// Computes the dendrogram describing the merging process exhaustively.
     ///
