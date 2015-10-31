@@ -14,7 +14,8 @@ pub trait AgglomerativeClustering {
     ///
     /// Starting with each element in its own cluster, iteratively merges the two most similar
     /// clusters until a certain distance `threshold` is reached. The remaining
-    /// clusters are returned.
+    /// clusters are returned. The clusters are represented by vectors of indices into
+    /// the original data.
     ///
     /// If you need to cluster certain points repeatidly with different thresholds, it might
     /// makes sense to use `compute_dendrogram()` to build a full dendrogram and use its
@@ -22,6 +23,9 @@ pub trait AgglomerativeClustering {
     fn cluster<P: Point>(&self, points: &[P], threshold: f64) -> Vec<Vec<usize>>;
 
     /// Computes the dendrogram describing the merging process exhaustively.
+    ///
+    /// The leafs of the returned dendrogram contain the indices into the original set
+    /// of points.
     ///
     /// Despite one being interested in the dendrogram itself, it might make sense to use
     /// the returned `Dendrogram` to find various clusters given different thresholds using

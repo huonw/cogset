@@ -9,16 +9,18 @@
 //! crate, or go all out and implement a specialised R*-tree for
 //! optimised performance.
 //!
-//! Density-based clustering algorithms:
+//! **Density-based clustering algorithms:**
 //!
 //! - DBSCAN (`Dbscan`)
 //! - OPTICS (`Optics`)
 //!
-//! Hierarchical clustering algorithms:
+//! **Hierarchical clustering algorithms:**
 //!
-//! - Agglomerative bottom-up (`Agglomerative`)
+//! - Agglomerative or bottom-up clustering (`AgglomerativeClustering`)
+//!   * _Single-linkage criterion:_ `NaiveBottomUp` using `SingleLinkage`, `SLINK`
+//!   * _Complete-linkage criterion:_ `NaiveBottomUp` using `CompleteLinkage`, `CLINK`
 //!
-//! Others:
+//! **Others:**
 //!
 //! - *k*-means (`Kmeans`)
 //!
@@ -64,4 +66,4 @@ pub use kmeans::{Kmeans, KmeansBuilder};
 
 mod hierarchical;
 pub use hierarchical::{AgglomerativeClustering, NaiveBottomUp, LinkageCriterion, SingleLinkage,
-    CompleteLinkage, SLINK, CLINK};
+    CompleteLinkage, SLINK, CLINK, Dendrogram, Elements};
