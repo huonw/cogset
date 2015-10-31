@@ -127,6 +127,7 @@ pub struct NaiveBottomUp<L: LinkageCriterion> {
 }
 
 impl<L: LinkageCriterion> NaiveBottomUp<L> {
+    /// Create a new setting for bottom-up clustering given a certain `linkage` criterion.
     pub fn new(linkage: L) -> Self {
         NaiveBottomUp {
             linkage: linkage
