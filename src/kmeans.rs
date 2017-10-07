@@ -139,7 +139,18 @@ impl KmeansBuilder {
         let n = data.len();
         let mut assignments = vec![!0; n];
         let mut costs = vec![0.0; n];
-        let mut centres = data.iter().take(k).cloned().collect::<Vec<_>>();
+
+        // Important to either choose distinct centres here or alternatively to elsewhere ensure
+        // that identical centres don't lead later to returning a NaN mean, or else the algorithm
+        // fails
+        let mut centres: Vec<Euclid<T>> = data.iter().cloned()
+            .fold(Vec::new(), |mut acc, i| {
+                if acc.len() < k && acc.iter().cloned().all(|x| x.dist(&i) != 0.0){
+                    acc.push(i);
+                }
+                acc
+            });
+
         let mut counts = vec![0; k];
         update_assignments(data, &mut assignments, &mut counts, &mut costs, &centres);
         let mut objective = costs.iter().fold(0.0, |a, b| a + *b);
